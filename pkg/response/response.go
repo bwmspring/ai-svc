@@ -8,19 +8,21 @@ import (
 
 // Response 统一响应结构
 type Response struct {
-	Code    int         `json:"code"`
-	Message string      `json:"message"`
-	Data    interface{} `json:"data,omitempty"`
+	Code      int         `json:"code"`
+	Message   string      `json:"message"`
+	Data      interface{} `json:"data,omitempty"`
+	RequestID string      `json:"request_id,omitempty"`
 }
 
 // PageResponse 分页响应结构
 type PageResponse struct {
-	Code    int         `json:"code"`
-	Message string      `json:"message"`
-	Data    interface{} `json:"data,omitempty"`
-	Total   int64       `json:"total"`
-	Page    int         `json:"page"`
-	Size    int         `json:"size"`
+	Code      int         `json:"code"`
+	Message   string      `json:"message"`
+	Data      interface{} `json:"data,omitempty"`
+	Total     int64       `json:"total"`
+	Page      int         `json:"page"`
+	Size      int         `json:"size"`
+	RequestID string      `json:"request_id,omitempty"`
 }
 
 // 常用响应码
@@ -40,18 +42,20 @@ const (
 // Success 成功响应
 func Success(c *gin.Context, data interface{}) {
 	c.JSON(http.StatusOK, Response{
-		Code:    SUCCESS,
-		Message: "操作成功",
-		Data:    data,
+		Code:      SUCCESS,
+		Message:   "操作成功",
+		Data:      data,
+		RequestID: getRequestID(c),
 	})
 }
 
 // SuccessWithMessage 带消息的成功响应
 func SuccessWithMessage(c *gin.Context, message string, data interface{}) {
 	c.JSON(http.StatusOK, Response{
-		Code:    SUCCESS,
-		Message: message,
-		Data:    data,
+		Code:      SUCCESS,
+		Message:   message,
+		Data:      data,
+		RequestID: getRequestID(c),
 	})
 }
 
@@ -59,8 +63,9 @@ func SuccessWithMessage(c *gin.Context, message string, data interface{}) {
 func Error(c *gin.Context, code int, message string) {
 	httpStatus := getHTTPStatus(code)
 	c.JSON(httpStatus, Response{
-		Code:    code,
-		Message: message,
+		Code:      code,
+		Message:   message,
+		RequestID: getRequestID(c),
 	})
 }
 
@@ -68,33 +73,36 @@ func Error(c *gin.Context, code int, message string) {
 func ErrorWithData(c *gin.Context, code int, message string, data interface{}) {
 	httpStatus := getHTTPStatus(code)
 	c.JSON(httpStatus, Response{
-		Code:    code,
-		Message: message,
-		Data:    data,
+		Code:      code,
+		Message:   message,
+		Data:      data,
+		RequestID: getRequestID(c),
 	})
 }
 
 // Page 分页响应
 func Page(c *gin.Context, data interface{}, total int64, page, size int) {
 	c.JSON(http.StatusOK, PageResponse{
-		Code:    SUCCESS,
-		Message: "查询成功",
-		Data:    data,
-		Total:   total,
-		Page:    page,
-		Size:    size,
+		Code:      SUCCESS,
+		Message:   "查询成功",
+		Data:      data,
+		Total:     total,
+		Page:      page,
+		Size:      size,
+		RequestID: getRequestID(c),
 	})
 }
 
 // PageWithMessage 带消息的分页响应
 func PageWithMessage(c *gin.Context, message string, data interface{}, total int64, page, size int) {
 	c.JSON(http.StatusOK, PageResponse{
-		Code:    SUCCESS,
-		Message: message,
-		Data:    data,
-		Total:   total,
-		Page:    page,
-		Size:    size,
+		Code:      SUCCESS,
+		Message:   message,
+		Data:      data,
+		Total:     total,
+		Page:      page,
+		Size:      size,
+		RequestID: getRequestID(c),
 	})
 }
 
@@ -122,4 +130,12 @@ func getHTTPStatus(code int) int {
 	default:
 		return http.StatusInternalServerError
 	}
+}
+
+// getRequestID 从上下文中获取请求ID
+func getRequestID(c *gin.Context) string {
+	if requestID, exists := c.Get("request_id"); exists {
+		return requestID.(string)
+	}
+	return ""
 }

@@ -12,9 +12,9 @@ import (
 
 	"ai-svc/internal/config"
 	"ai-svc/internal/model"
+	"ai-svc/internal/routes"
 	"ai-svc/pkg/database"
 	"ai-svc/pkg/logger"
-	"ai-svc/routes"
 
 	"github.com/gin-gonic/gin"
 )
@@ -40,15 +40,15 @@ func main() {
 	})
 
 	// 连接数据库
-	if err := database.Connect(); err != nil {
-		logger.Fatal("数据库连接失败", map[string]interface{}{"error": err.Error()})
-	}
-	defer database.Close()
+	// if err := database.Connect(); err != nil {
+	// 	logger.Fatal("数据库连接失败", map[string]interface{}{"error": err.Error()})
+	// }
+	// defer database.Close()
 
-	// 自动迁移数据库表
-	if err := migrateDatabase(); err != nil {
-		logger.Fatal("数据库迁移失败", map[string]interface{}{"error": err.Error()})
-	}
+	// // 自动迁移数据库表
+	// if err := migrateDatabase(); err != nil {
+	// 	logger.Fatal("数据库迁移失败", map[string]interface{}{"error": err.Error()})
+	// }
 
 	// 设置Gin模式
 	gin.SetMode(config.AppConfig.Server.Mode)

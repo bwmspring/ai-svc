@@ -26,12 +26,12 @@ ai-svc/
 │   ├── service/          # 业务逻辑层
 │   ├── repository/       # 数据访问层
 │   ├── model/            # 数据模型
-│   └── middleware/       # 中间件
+│   ├── middleware/       # 中间件
+│   └── routes/           # 路由配置
 ├── pkg/                   # 可重用的库代码
 │   ├── database/         # 数据库连接
 │   ├── logger/           # 日志工具
 │   └── response/         # 统一响应格式
-├── routes/               # 路由配置
 ├── configs/              # 配置文件
 ├── docs/                 # 文档
 ├── Dockerfile            # Docker镜像构建文件
@@ -53,6 +53,7 @@ ai-svc/
 - ✅ 跨域支持
 - ✅ 优雅关闭
 - ✅ Docker容器化
+- ✅ 请求ID追踪 (UUID)
 
 ## 快速开始
 
@@ -209,7 +210,7 @@ jwt:
 2. 在 `internal/repository/` 中实现数据访问层
 3. 在 `internal/service/` 中实现业务逻辑层
 4. 在 `internal/controller/` 中实现HTTP控制器
-5. 在 `routes/routes.go` 中添加路由
+5. 在 `internal/routes/routes.go` 中添加路由
 
 ### 数据库迁移
 

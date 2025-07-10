@@ -15,16 +15,18 @@ func SetupRoutes() *gin.Engine {
 	// 创建Gin引擎
 	router := gin.New()
 
-	// 应用全局中间件
-	router.Use(middleware.Logger())
-	router.Use(middleware.Recovery())
-	router.Use(middleware.CORS())
+	// 应用全局中间件（注意顺序）
+	router.Use(middleware.RequestID()) // 首先添加请求ID
+	router.Use(middleware.Logger())    // 然后记录日志（包含请求ID）
+	router.Use(middleware.Recovery())  // 错误恢复
+	router.Use(middleware.CORS())      // 跨域支持
 
 	// 健康检查
 	router.GET("/health", func(c *gin.Context) {
 		response.Success(c, gin.H{
-			"status":  "ok",
-			"message": "服务运行正常",
+			"status":     "ok",
+			"message":    "服务运行正常",
+			"request_id": middleware.GetRequestID(c),
 		})
 	})
 
