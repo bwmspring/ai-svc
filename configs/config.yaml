@@ -1,0 +1,27 @@
+server:
+  port: "8080"
+  mode: "debug" # debug, release, test
+  read_timeout: 60
+  write_timeout: 60
+
+database:
+  host: "localhost"
+  port: 3306
+  username: "root"
+  password: "password"
+  database: "ai_svc"
+  charset: "utf8mb4"
+  max_idle_conns: 10
+  max_open_conns: 100
+
+log:
+  level: "info" # debug, info, warn, error
+  format: "json" # json, text
+  output: "stdout" # stdout, file
+  max_size: 100 # MB
+  max_backups: 3
+  max_age: 7 # days
+
+jwt:
+  secret: "your-jwt-secret-key-change-this-in-production"
+  expire_time: 3600 # seconds
