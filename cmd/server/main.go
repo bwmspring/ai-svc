@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -11,9 +10,7 @@ import (
 	"time"
 
 	"ai-svc/internal/config"
-	"ai-svc/internal/model"
 	"ai-svc/internal/routes"
-	"ai-svc/pkg/database"
 	"ai-svc/pkg/logger"
 
 	"github.com/gin-gonic/gin"
@@ -44,11 +41,6 @@ func main() {
 	// 	logger.Fatal("数据库连接失败", map[string]interface{}{"error": err.Error()})
 	// }
 	// defer database.Close()
-
-	// // 自动迁移数据库表
-	// if err := migrateDatabase(); err != nil {
-	// 	logger.Fatal("数据库迁移失败", map[string]interface{}{"error": err.Error()})
-	// }
 
 	// 设置Gin模式
 	gin.SetMode(config.AppConfig.Server.Mode)
@@ -91,22 +83,4 @@ func main() {
 	} else {
 		logger.Info("服务器已优雅关闭", nil)
 	}
-}
-
-// migrateDatabase 数据库迁移
-func migrateDatabase() error {
-	db := database.GetDB()
-
-	logger.Info("开始数据库迁移", nil)
-
-	// 自动迁移表结构
-	if err := db.AutoMigrate(
-		&model.User{},
-		&model.UserProfile{},
-	); err != nil {
-		return fmt.Errorf("数据库迁移失败: %w", err)
-	}
-
-	logger.Info("数据库迁移完成", nil)
-	return nil
 }

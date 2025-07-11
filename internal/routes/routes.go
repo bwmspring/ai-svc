@@ -32,15 +32,21 @@ func SetupRoutes() *gin.Engine {
 
 	// 初始化依赖
 	userRepo := repository.NewUserRepository()
-	userService := service.NewUserService(userRepo)
-	userController := controller.NewUserController(userService)
+	smsRepo := repository.NewSMSRepository()
+	smsService := service.NewSMSService(smsRepo)
+	userService := service.NewUserService(userRepo, smsService)
+	userController := controller.NewUserController(userService, smsService)
+	smsController := controller.NewSMSController(smsService)
+
+	// 创建频率限制器
+	rateLimiter := middleware.NewRateLimiter()
 
 	// API路由组
 	api := router.Group("/api/v1")
 	{
 		// 公开接口（无需认证）
-		api.POST("/register", userController.Register)
-		api.POST("/login", userController.Login)
+		api.POST("/sms/send", middleware.SMSRateLimit(rateLimiter), smsController.SendSMS) // 发送短信验证码（带频率限制）
+		api.POST("/auth/login", userController.LoginWithSMS)                               // 手机号+验证码登录（同时完成注册）
 
 		// 需要认证的接口
 		auth := api.Group("/users")
@@ -49,7 +55,6 @@ func SetupRoutes() *gin.Engine {
 			// 当前用户相关接口
 			auth.GET("/profile", userController.GetProfile)
 			auth.PUT("/profile", userController.UpdateProfile)
-			auth.POST("/change-password", userController.ChangePassword)
 
 			// 用户管理接口（可以根据需要添加权限控制）
 			auth.GET("/list", userController.GetUserList)

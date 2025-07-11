@@ -13,12 +13,16 @@ type UserRepository interface {
 	GetByID(id uint) (*model.User, error)
 	GetByUsername(username string) (*model.User, error)
 	GetByEmail(email string) (*model.User, error)
+	GetByPhone(phone string) (*model.User, error)
 	Update(user *model.User) error
-	UpdatePassword(id uint, password string) error
 	Delete(id uint) error
 	List(offset, limit int) ([]*model.User, int64, error)
 	Search(keyword string, offset, limit int) ([]*model.User, int64, error)
-	UpdateLastLogin(id uint, ip string) error
+
+	// SMS 验证码相关方法
+	CreateSMSCode(smsCode *model.SMSVerificationCode) error
+	GetSMSCode(phone, purpose string) (*model.SMSVerificationCode, error)
+	UpdateSMSCode(smsCode *model.SMSVerificationCode) error
 }
 
 // userRepository 用户仓储实现
@@ -68,14 +72,19 @@ func (r *userRepository) GetByEmail(email string) (*model.User, error) {
 	return &user, nil
 }
 
+// GetByPhone 根据手机号获取用户
+func (r *userRepository) GetByPhone(phone string) (*model.User, error) {
+	var user model.User
+	err := r.db.Where("phone = ?", phone).First(&user).Error
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
 // Update 更新用户
 func (r *userRepository) Update(user *model.User) error {
 	return r.db.Save(user).Error
-}
-
-// UpdatePassword 更新密码
-func (r *userRepository) UpdatePassword(id uint, password string) error {
-	return r.db.Model(&model.User{}).Where("id = ?", id).Update("password", password).Error
 }
 
 // Delete 删除用户
@@ -103,8 +112,8 @@ func (r *userRepository) Search(keyword string, offset, limit int) ([]*model.Use
 	var users []*model.User
 	var total int64
 
-	query := r.db.Model(&model.User{}).Where("username LIKE ? OR email LIKE ? OR nickname LIKE ?",
-		"%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%")
+	query := r.db.Model(&model.User{}).Where("username LIKE ? OR email LIKE ? OR nickname LIKE ? OR phone LIKE ?",
+		"%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%")
 
 	// 获取总数
 	if err := query.Count(&total).Error; err != nil {
@@ -116,10 +125,23 @@ func (r *userRepository) Search(keyword string, offset, limit int) ([]*model.Use
 	return users, total, err
 }
 
-// UpdateLastLogin 更新最后登录信息
-func (r *userRepository) UpdateLastLogin(id uint, ip string) error {
-	return r.db.Model(&model.User{}).Where("id = ?", id).Updates(map[string]interface{}{
-		"last_ip":   ip,
-		"last_time": gorm.Expr("NOW()"),
-	}).Error
+// CreateSMSCode 创建短信验证码
+func (r *userRepository) CreateSMSCode(smsCode *model.SMSVerificationCode) error {
+	return r.db.Create(smsCode).Error
+}
+
+// GetSMSCode 根据手机号和用途获取最新的未使用验证码
+func (r *userRepository) GetSMSCode(phone, purpose string) (*model.SMSVerificationCode, error) {
+	var smsCode model.SMSVerificationCode
+	err := r.db.Where("phone = ? AND purpose = ? AND used_at IS NULL", phone, purpose).
+		Order("created_at DESC").First(&smsCode).Error
+	if err != nil {
+		return nil, err
+	}
+	return &smsCode, nil
+}
+
+// UpdateSMSCode 更新短信验证码
+func (r *userRepository) UpdateSMSCode(smsCode *model.SMSVerificationCode) error {
+	return r.db.Save(smsCode).Error
 }

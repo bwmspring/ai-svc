@@ -15,43 +15,22 @@ import (
 // UserController 用户控制器
 type UserController struct {
 	userService service.UserService
+	smsService  service.SMSService
 	validator   *validator.Validate
 }
 
 // NewUserController 创建用户控制器实例
-func NewUserController(userService service.UserService) *UserController {
+func NewUserController(userService service.UserService, smsService service.SMSService) *UserController {
 	return &UserController{
 		userService: userService,
+		smsService:  smsService,
 		validator:   validator.New(),
 	}
 }
 
-// Register 用户注册
-func (ctrl *UserController) Register(c *gin.Context) {
-	var req model.CreateUserRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, response.INVALID_PARAMS, "参数错误: "+err.Error())
-		return
-	}
-
-	// 参数验证
-	if err := ctrl.validator.Struct(&req); err != nil {
-		response.Error(c, response.INVALID_PARAMS, "参数验证失败: "+err.Error())
-		return
-	}
-
-	user, err := ctrl.userService.CreateUser(&req)
-	if err != nil {
-		response.Error(c, response.ERROR, err.Error())
-		return
-	}
-
-	response.SuccessWithMessage(c, "注册成功", user)
-}
-
-// Login 用户登录
-func (ctrl *UserController) Login(c *gin.Context) {
-	var req model.LoginRequest
+// LoginWithSMS 手机号+验证码登录（同时完成注册）
+func (ctrl *UserController) LoginWithSMS(c *gin.Context) {
+	var req model.LoginWithSMSRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Error(c, response.INVALID_PARAMS, "参数错误: "+err.Error())
 		return
@@ -66,22 +45,27 @@ func (ctrl *UserController) Login(c *gin.Context) {
 	// 获取客户端IP
 	ip := c.ClientIP()
 
-	user, err := ctrl.userService.Login(&req, ip)
+	user, isNewUser, err := ctrl.userService.LoginWithSMS(&req, ip)
 	if err != nil {
 		response.Error(c, response.UNAUTHORIZED, err.Error())
 		return
 	}
 
 	// 生成JWT令牌
-	token, err := middleware.GenerateToken(user.ID, user.Username)
+	token, err := middleware.GenerateToken(user.ID, user.Phone)
 	if err != nil {
 		response.Error(c, response.ERROR, "生成令牌失败")
 		return
 	}
 
-	response.SuccessWithMessage(c, "登录成功", gin.H{
-		"user":  user,
-		"token": token,
+	message := "登录成功"
+	if isNewUser {
+		message = "注册并登录成功"
+	}
+
+	response.SuccessWithMessage(c, message, &model.LoginResponse{
+		User:  user,
+		Token: token,
 	})
 }
 
@@ -129,34 +113,6 @@ func (ctrl *UserController) UpdateProfile(c *gin.Context) {
 	}
 
 	response.SuccessWithMessage(c, "更新成功", user)
-}
-
-// ChangePassword 修改密码
-func (ctrl *UserController) ChangePassword(c *gin.Context) {
-	userID := middleware.GetCurrentUserID(c)
-	if userID == 0 {
-		response.Error(c, response.UNAUTHORIZED, "未授权")
-		return
-	}
-
-	var req model.ChangePasswordRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, response.INVALID_PARAMS, "参数错误: "+err.Error())
-		return
-	}
-
-	// 参数验证
-	if err := ctrl.validator.Struct(&req); err != nil {
-		response.Error(c, response.INVALID_PARAMS, "参数验证失败: "+err.Error())
-		return
-	}
-
-	if err := ctrl.userService.ChangePassword(userID, &req); err != nil {
-		response.Error(c, response.ERROR, err.Error())
-		return
-	}
-
-	response.SuccessWithMessage(c, "密码修改成功", nil)
 }
 
 // GetUserList 获取用户列表
