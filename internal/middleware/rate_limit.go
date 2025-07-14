@@ -9,6 +9,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// RateLimitConfig 限流配置
+type RateLimitConfig struct {
+	Capacity       int           // 令牌桶容量
+	RefillRate     int           // 补充的令牌数
+	RefillInterval time.Duration // 补充间隔（例如：time.Minute 表示每分钟补充）
+	ErrorMsg       string        // 自定义错误消息
+}
+
 // RateLimiter 频率限制器
 type RateLimiter struct {
 	visitors map[string]*Visitor
@@ -17,17 +25,18 @@ type RateLimiter struct {
 
 // Visitor 访问者信息
 type Visitor struct {
-	limiter  *TokenBucket
+	limiters map[string]*TokenBucket // 支持多个限流器（用于不同接口）
 	lastSeen time.Time
 }
 
 // TokenBucket 令牌桶
 type TokenBucket struct {
-	tokens     int
-	capacity   int
-	refillRate int
-	lastRefill time.Time
-	mu         sync.Mutex
+	tokens         int
+	capacity       int
+	refillRate     int
+	refillInterval time.Duration
+	lastRefill     time.Time
+	mu             sync.Mutex
 }
 
 // NewRateLimiter 创建频率限制器
@@ -43,12 +52,13 @@ func NewRateLimiter() *RateLimiter {
 }
 
 // NewTokenBucket 创建令牌桶
-func NewTokenBucket(capacity, refillRate int) *TokenBucket {
+func NewTokenBucket(capacity, refillRate int, refillInterval time.Duration) *TokenBucket {
 	return &TokenBucket{
-		tokens:     capacity,
-		capacity:   capacity,
-		refillRate: refillRate,
-		lastRefill: time.Now(),
+		tokens:         capacity,
+		capacity:       capacity,
+		refillRate:     refillRate,
+		refillInterval: refillInterval,
+		lastRefill:     time.Now(),
 	}
 }
 
@@ -58,16 +68,18 @@ func (tb *TokenBucket) Allow() bool {
 	defer tb.mu.Unlock()
 
 	now := time.Now()
-	// 计算应该添加的令牌数
+	// 计算经过的时间间隔数
 	elapsed := now.Sub(tb.lastRefill)
-	tokensToAdd := int(elapsed.Seconds()) * tb.refillRate
+	intervals := int(elapsed / tb.refillInterval)
 
-	if tokensToAdd > 0 {
+	if intervals > 0 {
+		tokensToAdd := intervals * tb.refillRate
 		tb.tokens += tokensToAdd
 		if tb.tokens > tb.capacity {
 			tb.tokens = tb.capacity
 		}
-		tb.lastRefill = now
+		// 更新最后补充时间，对齐到间隔边界
+		tb.lastRefill = tb.lastRefill.Add(time.Duration(intervals) * tb.refillInterval)
 	}
 
 	if tb.tokens > 0 {
@@ -84,9 +96,8 @@ func (rl *RateLimiter) GetVisitor(ip string) *Visitor {
 
 	visitor, exists := rl.visitors[ip]
 	if !exists {
-		// 创建新的访问者，SMS接口限制：每分钟最多1次，每小时最多5次
 		visitor = &Visitor{
-			limiter:  NewTokenBucket(1, 1), // 容量1，每60秒补充1个令牌
+			limiters: make(map[string]*TokenBucket),
 			lastSeen: time.Now(),
 		}
 		rl.visitors[ip] = visitor
@@ -94,6 +105,16 @@ func (rl *RateLimiter) GetVisitor(ip string) *Visitor {
 
 	visitor.lastSeen = time.Now()
 	return visitor
+}
+
+// GetLimiter 获取指定接口的限流器
+func (v *Visitor) GetLimiter(endpoint string, config RateLimitConfig) *TokenBucket {
+	limiter, exists := v.limiters[endpoint]
+	if !exists {
+		limiter = NewTokenBucket(config.Capacity, config.RefillRate, config.RefillInterval)
+		v.limiters[endpoint] = limiter
+	}
+	return limiter
 }
 
 // cleanupVisitors 清理过期的访问者
@@ -110,18 +131,59 @@ func (rl *RateLimiter) cleanupVisitors() {
 	}
 }
 
-// SMSRateLimit SMS发送频率限制中间件
-func SMSRateLimit(limiter *RateLimiter) gin.HandlerFunc {
+// DefaultRateLimitConfig 默认限流配置
+var DefaultRateLimitConfig = RateLimitConfig{
+	Capacity:       1,
+	RefillRate:     1,
+	RefillInterval: time.Minute, // 每分钟补充1个令牌
+	ErrorMsg:       "请求过于频繁，请稍后再试",
+}
+
+// CustomRateLimit 自定义限流中间件
+func CustomRateLimit(limiter *RateLimiter, config ...RateLimitConfig) gin.HandlerFunc {
+	// 如果没有传入配置，使用默认配置
+	cfg := DefaultRateLimitConfig
+	if len(config) > 0 {
+		cfg = config[0]
+		// 填充未设置的字段为默认值
+		if cfg.Capacity <= 0 {
+			cfg.Capacity = DefaultRateLimitConfig.Capacity
+		}
+		if cfg.RefillRate <= 0 {
+			cfg.RefillRate = DefaultRateLimitConfig.RefillRate
+		}
+		if cfg.RefillInterval <= 0 {
+			cfg.RefillInterval = DefaultRateLimitConfig.RefillInterval
+		}
+		if cfg.ErrorMsg == "" {
+			cfg.ErrorMsg = DefaultRateLimitConfig.ErrorMsg
+		}
+	}
+
 	return func(c *gin.Context) {
 		ip := c.ClientIP()
-		visitor := limiter.GetVisitor(ip)
+		endpoint := c.Request.Method + ":" + c.FullPath()
 
-		if !visitor.limiter.Allow() {
-			response.Error(c, response.ERROR, "发送过于频繁，请稍后再试")
+		visitor := limiter.GetVisitor(ip)
+		tokenBucket := visitor.GetLimiter(endpoint, cfg)
+
+		if !tokenBucket.Allow() {
+			response.Error(c, response.ERROR, cfg.ErrorMsg)
 			c.Abort()
 			return
 		}
 
 		c.Next()
 	}
+}
+
+// SMSRateLimit SMS发送频率限制中间件（保持向后兼容）
+func SMSRateLimit(limiter *RateLimiter) gin.HandlerFunc {
+	smsConfig := RateLimitConfig{
+		Capacity:       1,
+		RefillRate:     1,
+		RefillInterval: time.Minute, // 每分钟补充1个令牌
+		ErrorMsg:       "发送过于频繁，请稍后再试",
+	}
+	return CustomRateLimit(limiter, smsConfig)
 }

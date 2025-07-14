@@ -42,19 +42,13 @@ func (ctrl *UserController) LoginWithSMS(c *gin.Context) {
 		return
 	}
 
-	// 获取客户端IP
+	// 获取客户端IP和User-Agent
 	ip := c.ClientIP()
+	userAgent := c.GetHeader("User-Agent")
 
-	user, isNewUser, err := ctrl.userService.LoginWithSMS(&req, ip)
+	loginResp, isNewUser, err := ctrl.userService.LoginWithSMS(&req, ip, userAgent)
 	if err != nil {
 		response.Error(c, response.UNAUTHORIZED, err.Error())
-		return
-	}
-
-	// 生成JWT令牌
-	token, err := middleware.GenerateToken(user.ID, user.Phone)
-	if err != nil {
-		response.Error(c, response.ERROR, "生成令牌失败")
 		return
 	}
 
@@ -63,10 +57,7 @@ func (ctrl *UserController) LoginWithSMS(c *gin.Context) {
 		message = "注册并登录成功"
 	}
 
-	response.SuccessWithMessage(c, message, &model.LoginResponse{
-		User:  user,
-		Token: token,
-	})
+	response.SuccessWithMessage(c, message, loginResp)
 }
 
 // GetProfile 获取用户信息
@@ -196,4 +187,49 @@ func (ctrl *UserController) DeleteUser(c *gin.Context) {
 	}
 
 	response.SuccessWithMessage(c, "删除成功", nil)
+}
+
+// GetUserDevices 获取用户设备列表
+func (ctrl *UserController) GetUserDevices(c *gin.Context) {
+	userID := middleware.GetCurrentUserID(c)
+	if userID == 0 {
+		response.Error(c, response.UNAUTHORIZED, "未授权")
+		return
+	}
+
+	devices, err := ctrl.userService.GetUserDevices(userID)
+	if err != nil {
+		response.Error(c, response.ERROR, err.Error())
+		return
+	}
+
+	response.Success(c, devices)
+}
+
+// KickDevices 踢出设备
+func (ctrl *UserController) KickDevices(c *gin.Context) {
+	userID := middleware.GetCurrentUserID(c)
+	if userID == 0 {
+		response.Error(c, response.UNAUTHORIZED, "未授权")
+		return
+	}
+
+	var req model.KickDeviceRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, response.INVALID_PARAMS, "参数错误: "+err.Error())
+		return
+	}
+
+	// 参数验证
+	if err := ctrl.validator.Struct(&req); err != nil {
+		response.Error(c, response.INVALID_PARAMS, "参数验证失败: "+err.Error())
+		return
+	}
+
+	if err := ctrl.userService.KickDevices(userID, &req); err != nil {
+		response.Error(c, response.ERROR, err.Error())
+		return
+	}
+
+	response.SuccessWithMessage(c, "设备已被踢出", nil)
 }

@@ -81,10 +81,11 @@ type SendSMSRequest struct {
 	Purpose string `json:"purpose" validate:"required,oneof=login register reset"` // login, register, reset
 }
 
-// LoginWithSMSRequest 手机号+验证码登录请求
+// LoginWithSMSRequest 手机号+验证码登录请求（扩展设备信息）
 type LoginWithSMSRequest struct {
-	Phone string `json:"phone" validate:"required,min=11,max=20"`
-	Code  string `json:"code" validate:"required,min=4,max=10"`
+	Phone      string      `json:"phone" validate:"required,min=11,max=20"`
+	Code       string      `json:"code" validate:"required,min=4,max=10"`
+	DeviceInfo *DeviceInfo `json:"device_info" validate:"required"` // 设备信息
 }
 
 // UpdateUserRequest 更新用户请求
@@ -169,4 +170,101 @@ func (s *SMSVerificationCode) IsValid() bool {
 func (s *SMSVerificationCode) MarkAsUsed() {
 	now := time.Now()
 	s.UsedAt = &now
+}
+
+// UserDevice 用户设备模型
+type UserDevice struct {
+	ID           uint      `gorm:"primarykey" json:"id"`
+	UserID       uint      `gorm:"index;not null" json:"user_id"`
+	DeviceID     string    `gorm:"type:varchar(100);not null;index" json:"device_id"` // 设备唯一标识
+	DeviceType   string    `gorm:"type:varchar(20);not null" json:"device_type"`      // pc, ios, android, miniprogram
+	DeviceName   string    `gorm:"type:varchar(100)" json:"device_name"`              // 设备名称
+	AppVersion   string    `gorm:"type:varchar(20)" json:"app_version"`               // 应用版本
+	OSVersion    string    `gorm:"type:varchar(50)" json:"os_version"`                // 操作系统版本
+	ClientIP     string    `gorm:"type:varchar(45)" json:"client_ip"`                 // 客户端IP
+	UserAgent    string    `gorm:"type:varchar(500)" json:"user_agent"`               // 用户代理
+	Status       int       `gorm:"type:tinyint;default:1;comment:状态 1:在线 0:离线" json:"status"`
+	LoginAt      time.Time `gorm:"not null" json:"login_at"`       // 登录时间
+	LastActiveAt time.Time `gorm:"not null" json:"last_active_at"` // 最后活跃时间
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+// TableName 表名
+func (UserDevice) TableName() string {
+	return "user_devices"
+}
+
+// IsOnline 检查设备是否在线
+func (d *UserDevice) IsOnline() bool {
+	return d.Status == 1 && time.Since(d.LastActiveAt) < 30*time.Minute
+}
+
+// DeviceType 设备类型常量
+const (
+	DeviceTypePC          = "pc"
+	DeviceTypeIOS         = "ios"
+	DeviceTypeAndroid     = "android"
+	DeviceTypeMiniprogram = "miniprogram"
+	DeviceTypeWeb         = "web"
+)
+
+// UserSession 用户会话模型
+type UserSession struct {
+	ID           uint      `gorm:"primarykey" json:"id"`
+	UserID       uint      `gorm:"index;not null" json:"user_id"`
+	DeviceID     string    `gorm:"type:varchar(100);not null;index" json:"device_id"`
+	SessionToken string    `gorm:"type:varchar(255);not null;uniqueIndex" json:"session_token"`
+	JWTToken     string    `gorm:"type:text;not null" json:"jwt_token"`
+	ExpiresAt    time.Time `gorm:"not null" json:"expires_at"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+// TableName 表名
+func (UserSession) TableName() string {
+	return "user_sessions"
+}
+
+// IsExpired 检查会话是否过期
+func (s *UserSession) IsExpired() bool {
+	return time.Now().After(s.ExpiresAt)
+}
+
+// DeviceInfo 设备信息请求
+type DeviceInfo struct {
+	DeviceID   string `json:"device_id" validate:"required,max=100"`                                // 设备唯一标识
+	DeviceType string `json:"device_type" validate:"required,oneof=pc ios android miniprogram web"` // 设备类型
+	DeviceName string `json:"device_name" validate:"max=100"`                                       // 设备名称
+	AppVersion string `json:"app_version" validate:"max=20"`                                        // 应用版本
+	OSVersion  string `json:"os_version" validate:"max=50"`                                         // 操作系统版本
+}
+
+// DeviceResponse 设备响应
+type DeviceResponse struct {
+	ID           uint      `json:"id"`
+	DeviceID     string    `json:"device_id"`
+	DeviceType   string    `json:"device_type"`
+	DeviceName   string    `json:"device_name"`
+	AppVersion   string    `json:"app_version"`
+	OSVersion    string    `json:"os_version"`
+	ClientIP     string    `json:"client_ip"`
+	Status       int       `json:"status"`
+	LoginAt      time.Time `json:"login_at"`
+	LastActiveAt time.Time `json:"last_active_at"`
+	IsOnline     bool      `json:"is_online"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+// UserDevicesResponse 用户设备列表响应
+type UserDevicesResponse struct {
+	Devices     []*DeviceResponse `json:"devices"`
+	TotalCount  int               `json:"total_count"`
+	OnlineCount int               `json:"online_count"`
+	MaxDevices  int               `json:"max_devices"`
+}
+
+// KickDeviceRequest 踢出设备请求
+type KickDeviceRequest struct {
+	DeviceIDs []string `json:"device_ids" validate:"required,min=1"` // 要踢出的设备ID列表
 }

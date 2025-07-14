@@ -13,33 +13,49 @@ import (
 
 // UserService 用户服务接口
 type UserService interface {
+	// 认证相关
+	LoginWithSMS(req *model.LoginWithSMSRequest, ip, userAgent string) (*model.LoginResponse, bool, error)
+
+	// 用户管理
 	GetUserByID(id uint) (*model.UserResponse, error)
 	UpdateUser(id uint, req *model.UpdateUserRequest) (*model.UserResponse, error)
 	DeleteUser(id uint) error
-	LoginWithSMS(req *model.LoginWithSMSRequest, ip string) (*model.UserResponse, bool, error)
 	GetUserList(page, size int) ([]*model.UserResponse, int64, error)
 	SearchUsers(keyword string, page, size int) ([]*model.UserResponse, int64, error)
+
+	// 设备管理
+	GetUserDevices(userID uint) (*model.UserDevicesResponse, error)
+	KickDevices(userID uint, req *model.KickDeviceRequest) error
 }
 
 // userService 用户服务实现
 type userService struct {
-	userRepo   repository.UserRepository
-	smsService SMSService
+	userRepo      repository.UserRepository
+	smsService    SMSService
+	deviceService DeviceService
+	jwtService    JWTService
 }
 
 // NewUserService 创建用户服务实例
-func NewUserService(userRepo repository.UserRepository, smsService SMSService) UserService {
+func NewUserService(userRepo repository.UserRepository, smsService SMSService, deviceService DeviceService) UserService {
 	return &userService{
-		userRepo:   userRepo,
-		smsService: smsService,
+		userRepo:      userRepo,
+		smsService:    smsService,
+		deviceService: deviceService,
+		jwtService:    NewJWTService(),
 	}
 }
 
 // LoginWithSMS 手机号+验证码登录（同时完成注册）
-func (s *userService) LoginWithSMS(req *model.LoginWithSMSRequest, ip string) (*model.UserResponse, bool, error) {
+func (s *userService) LoginWithSMS(req *model.LoginWithSMSRequest, ip, userAgent string) (*model.LoginResponse, bool, error) {
 	// 验证验证码
 	if err := s.smsService.ValidateVerificationCode(req.Phone, req.Code, "login"); err != nil {
 		return nil, false, err
+	}
+
+	// 验证设备信息
+	if req.DeviceInfo == nil {
+		return nil, false, errors.New("设备信息不能为空")
 	}
 
 	// 查找用户
@@ -85,7 +101,47 @@ func (s *userService) LoginWithSMS(req *model.LoginWithSMSRequest, ip string) (*
 		}
 	}
 
-	return s.convertToResponse(user), isNewUser, nil
+	// 注册/更新设备
+	device, err := s.deviceService.RegisterDevice(user.ID, req.DeviceInfo, ip, userAgent)
+	if err != nil {
+		logger.Error("注册设备失败", map[string]interface{}{"error": err.Error()})
+		return nil, false, errors.New("设备注册失败")
+	}
+
+	// 创建会话记录
+	session, err := s.deviceService.CreateSession(user.ID, device.DeviceID, "")
+	if err != nil {
+		logger.Error("创建会话失败", map[string]interface{}{"error": err.Error()})
+		return nil, false, errors.New("创建会话失败")
+	}
+
+	// 生成包含会话信息的JWT Token
+	jwtToken, err := s.jwtService.GenerateToken(user, device, session.SessionToken)
+	if err != nil {
+		logger.Error("生成JWT Token失败", map[string]interface{}{"error": err.Error()})
+		return nil, false, errors.New("生成Token失败")
+	}
+
+	// 更新会话记录中的JWT Token
+	session.JWTToken = jwtToken
+	if err := s.deviceService.UpdateSession(session); err != nil {
+		logger.Warn("更新会话JWT Token失败", map[string]interface{}{"error": err.Error()})
+		// 不影响登录流程，只记录警告
+	}
+
+	logger.Info("用户登录成功", map[string]interface{}{
+		"user_id":     user.ID,
+		"phone":       user.Phone,
+		"device_id":   device.DeviceID,
+		"device_type": device.DeviceType,
+		"is_new_user": isNewUser,
+		"session_id":  session.ID,
+	})
+
+	return &model.LoginResponse{
+		User:  s.convertToResponse(user),
+		Token: jwtToken,
+	}, isNewUser, nil
 }
 
 // GetUserByID 根据ID获取用户
@@ -113,11 +169,32 @@ func (s *userService) UpdateUser(id uint, req *model.UpdateUserRequest) (*model.
 	}
 
 	// 更新字段
+	if req.Username != "" {
+		user.Username = req.Username
+	}
+	if req.Email != "" {
+		user.Email = req.Email
+	}
 	if req.Nickname != "" {
 		user.Nickname = req.Nickname
 	}
 	if req.Avatar != "" {
 		user.Avatar = req.Avatar
+	}
+	if req.RealName != "" {
+		user.RealName = req.RealName
+	}
+	if req.Gender > 0 {
+		user.Gender = req.Gender
+	}
+	if req.Birthday != nil {
+		user.Birthday = req.Birthday
+	}
+	if req.Address != "" {
+		user.Address = req.Address
+	}
+	if req.Bio != "" {
+		user.Bio = req.Bio
 	}
 
 	if err := s.userRepo.Update(user); err != nil {
@@ -177,6 +254,16 @@ func (s *userService) SearchUsers(keyword string, page, size int) ([]*model.User
 	}
 
 	return responses, total, nil
+}
+
+// GetUserDevices 获取用户设备列表
+func (s *userService) GetUserDevices(userID uint) (*model.UserDevicesResponse, error) {
+	return s.deviceService.GetUserDevices(userID)
+}
+
+// KickDevices 踢出设备
+func (s *userService) KickDevices(userID uint, req *model.KickDeviceRequest) error {
+	return s.deviceService.KickDevices(userID, req.DeviceIDs)
 }
 
 // convertToResponse 转换为响应结构
