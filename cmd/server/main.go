@@ -1,86 +1,15 @@
+// Package main 是 AI 服务的入口点
+// 使用 Cobra 框架提供清晰的命令行接口和丰富的功能
 package main
 
-import (
-	"context"
-	"log"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
+import "ai-svc/cmd"
 
-	"ai-svc/internal/config"
-	"ai-svc/internal/routes"
-	"ai-svc/pkg/logger"
-
-	"github.com/gin-gonic/gin"
-)
-
+// main 函数是程序的入口点
+// 它将控制权交给 Cobra 命令行框架来处理用户输入和命令执行
+// 所有的复杂逻辑都被封装在 cmd 包中，保持 main.go 的简洁性
 func main() {
-	// 加载配置
-	if err := config.LoadConfig("./configs/config.yaml"); err != nil {
-		log.Fatalf("加载配置失败: %v", err)
-	}
-
-	// 初始化日志
-	if err := logger.Init(
-		config.AppConfig.Log.Level,
-		config.AppConfig.Log.Format,
-		config.AppConfig.Log.Output,
-	); err != nil {
-		log.Fatalf("初始化日志失败: %v", err)
-	}
-
-	logger.Info("开始启动服务", map[string]interface{}{
-		"version": "1.0.0",
-		"mode":    config.AppConfig.Server.Mode,
-	})
-
-	// 连接数据库
-	// if err := database.Connect(); err != nil {
-	// 	logger.Fatal("数据库连接失败", map[string]interface{}{"error": err.Error()})
-	// }
-	// defer database.Close()
-
-	// 设置Gin模式
-	gin.SetMode(config.AppConfig.Server.Mode)
-
-	// 设置路由
-	router := routes.SetupRoutes()
-
-	// 创建HTTP服务器
-	server := &http.Server{
-		Addr:         ":" + config.AppConfig.Server.Port,
-		Handler:      router,
-		ReadTimeout:  time.Duration(config.AppConfig.Server.ReadTimeout) * time.Second,
-		WriteTimeout: time.Duration(config.AppConfig.Server.WriteTimeout) * time.Second,
-	}
-
-	// 启动服务器（优雅启动）
-	go func() {
-		logger.Info("服务器启动", map[string]interface{}{
-			"port": config.AppConfig.Server.Port,
-			"mode": config.AppConfig.Server.Mode,
-		})
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Fatal("服务器启动失败", map[string]interface{}{"error": err.Error()})
-		}
-	}()
-
-	// 等待中断信号以优雅关闭服务器
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-
-	logger.Info("正在关闭服务器...", nil)
-
-	// 优雅关闭服务器，等待现有连接完成
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	if err := server.Shutdown(ctx); err != nil {
-		logger.Error("服务器强制关闭", map[string]interface{}{"error": err.Error()})
-	} else {
-		logger.Info("服务器已优雅关闭", nil)
-	}
+	// 执行 Cobra 根命令
+	// 这会解析命令行参数并路由到相应的子命令
+	// 如果执行过程中出现错误，程序会自动退出并显示错误信息
+	cmd.Execute()
 }

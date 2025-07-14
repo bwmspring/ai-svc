@@ -110,12 +110,3 @@ func Recovery() gin.HandlerFunc {
 		})
 	})
 }
-
-// RateLimit 限流中间件（简单实现）
-func RateLimit() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// 这里可以实现基于IP的限流逻辑
-		// 可以使用 Redis 或内存存储来记录请求频率
-		c.Next()
-	}
-}
