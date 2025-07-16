@@ -314,7 +314,7 @@ func TestBackwardCompatibility(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w2.Code)
 }
 
-// BenchmarkRateLimit 性能测试
+// BenchmarkRateLimit 性能测试.
 func BenchmarkRateLimit(b *testing.B) {
 	gin.SetMode(gin.TestMode)
 

@@ -9,13 +9,13 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-// SMSController 短信控制器
+// SMSController 短信控制器.
 type SMSController struct {
 	smsService service.SMSService
 	validator  *validator.Validate
 }
 
-// NewSMSController 创建短信控制器实例
+// NewSMSController 创建短信控制器实例.
 func NewSMSController(smsService service.SMSService) *SMSController {
 	return &SMSController{
 		smsService: smsService,
@@ -23,7 +23,7 @@ func NewSMSController(smsService service.SMSService) *SMSController {
 	}
 }
 
-// SendSMS 发送短信验证码
+// SendSMS 发送短信验证码.
 func (ctrl *SMSController) SendSMS(c *gin.Context) {
 	var req model.SendSMSRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

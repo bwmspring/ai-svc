@@ -1,10 +1,9 @@
 package middleware
 
 import (
+	"ai-svc/pkg/logger"
 	"net/http"
 	"time"
-
-	"ai-svc/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -31,12 +30,12 @@ func RequestID() gin.HandlerFunc {
 	}
 }
 
-// generateRequestID 生成唯一的请求ID
+// generateRequestID 生成唯一的请求ID.
 func generateRequestID() string {
 	return uuid.New().String()
 }
 
-// GetRequestID 从上下文中获取请求ID
+// GetRequestID 从上下文中获取请求ID.
 func GetRequestID(c *gin.Context) string {
 	if requestID, exists := c.Get("request_id"); exists {
 		return requestID.(string)
@@ -44,7 +43,7 @@ func GetRequestID(c *gin.Context) string {
 	return ""
 }
 
-// CORS 跨域中间件
+// CORS 跨域中间件.
 func CORS() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		method := c.Request.Method
@@ -52,8 +51,14 @@ func CORS() gin.HandlerFunc {
 
 		c.Header("Access-Control-Allow-Origin", origin)
 		c.Header("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, UPDATE")
-		c.Header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, X-File-Name")
-		c.Header("Access-Control-Expose-Headers", "Content-Length, Access-Control-Allow-Origin, Access-Control-Allow-Headers, Cache-Control, Content-Language, Content-Type")
+		c.Header(
+			"Access-Control-Allow-Headers",
+			"Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, X-File-Name",
+		)
+		c.Header(
+			"Access-Control-Expose-Headers",
+			"Content-Length, Access-Control-Allow-Origin, Access-Control-Allow-Headers, Cache-Control, Content-Language, Content-Type",
+		)
 		c.Header("Access-Control-Allow-Credentials", "true")
 
 		if method == "OPTIONS" {
@@ -63,7 +68,7 @@ func CORS() gin.HandlerFunc {
 	}
 }
 
-// Logger 日志中间件
+// Logger 日志中间件.
 func Logger() gin.HandlerFunc {
 	return gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
 		// 获取请求ID
@@ -72,7 +77,7 @@ func Logger() gin.HandlerFunc {
 			requestID = "unknown"
 		}
 
-		logger.Info("HTTP请求", map[string]interface{}{
+		logger.Info("HTTP请求", map[string]any{
 			"request_id": requestID,
 			"timestamp":  param.TimeStamp.Format(time.RFC3339),
 			"status":     param.StatusCode,
@@ -88,15 +93,15 @@ func Logger() gin.HandlerFunc {
 	})
 }
 
-// Recovery 恢复中间件
+// Recovery 恢复中间件.
 func Recovery() gin.HandlerFunc {
-	return gin.CustomRecovery(func(c *gin.Context, recovered interface{}) {
+	return gin.CustomRecovery(func(c *gin.Context, recovered any) {
 		requestID := GetRequestID(c)
 		if requestID == "" {
 			requestID = "unknown"
 		}
 
-		logger.Error("服务器内部错误", map[string]interface{}{
+		logger.Error("服务器内部错误", map[string]any{
 			"request_id": requestID,
 			"error":      recovered,
 			"path":       c.Request.URL.Path,

@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// SetupRoutes 设置路由
+// SetupRoutes 设置路由.
 func SetupRoutes() *gin.Engine {
 	// 创建Gin引擎
 	router := gin.New()
@@ -48,9 +48,17 @@ func SetupRoutes() *gin.Engine {
 	{
 		// 公开接口（无需认证）
 		// 使用预定义的SMS限流配置
-		api.POST("/sms/send", middleware.CustomRateLimit(rateLimiter, middleware.SMSRateLimitConfig), smsController.SendSMS)
+		api.POST(
+			"/sms/send",
+			middleware.CustomRateLimit(rateLimiter, middleware.SMSRateLimitConfig),
+			smsController.SendSMS,
+		)
 		// 登录接口使用登录专用的限流配置
-		api.POST("/auth/login", middleware.CustomRateLimit(rateLimiter, middleware.LoginRateLimitConfig), userController.LoginWithSMS)
+		api.POST(
+			"/auth/login",
+			middleware.CustomRateLimit(rateLimiter, middleware.LoginRateLimitConfig),
+			userController.LoginWithSMS,
+		)
 
 		// 需要认证的接口
 		auth := api.Group("/users")
@@ -60,18 +68,50 @@ func SetupRoutes() *gin.Engine {
 		auth.Use(middleware.DeviceValidationMiddleware(deviceService))
 		{
 			// 当前用户相关接口（使用一般API限流）
-			auth.GET("/profile", middleware.CustomRateLimit(rateLimiter, middleware.APIRateLimitConfig), userController.GetProfile)
-			auth.PUT("/profile", middleware.CustomRateLimit(rateLimiter, middleware.APIRateLimitConfig), userController.UpdateProfile)
+			auth.GET(
+				"/profile",
+				middleware.CustomRateLimit(rateLimiter, middleware.APIRateLimitConfig),
+				userController.GetProfile,
+			)
+			auth.PUT(
+				"/profile",
+				middleware.CustomRateLimit(rateLimiter, middleware.APIRateLimitConfig),
+				userController.UpdateProfile,
+			)
 
 			// 设备管理接口（敏感操作，使用严格限流）
-			auth.GET("/devices", middleware.CustomRateLimit(rateLimiter, middleware.APIRateLimitConfig), userController.GetUserDevices)
-			auth.POST("/devices/kick", middleware.CustomRateLimit(rateLimiter, middleware.StrictRateLimitConfig), userController.KickDevices)
+			auth.GET(
+				"/devices",
+				middleware.CustomRateLimit(rateLimiter, middleware.APIRateLimitConfig),
+				userController.GetUserDevices,
+			)
+			auth.POST(
+				"/devices/kick",
+				middleware.CustomRateLimit(rateLimiter, middleware.StrictRateLimitConfig),
+				userController.KickDevices,
+			)
 
 			// 用户管理接口（查询操作使用宽松限流，删除操作使用严格限流）
-			auth.GET("/list", middleware.CustomRateLimit(rateLimiter, middleware.LaxRateLimitConfig), userController.GetUserList)
-			auth.GET("/search", middleware.CustomRateLimit(rateLimiter, middleware.LaxRateLimitConfig), userController.SearchUsers)
-			auth.GET("/:id", middleware.CustomRateLimit(rateLimiter, middleware.APIRateLimitConfig), userController.GetUserByID)
-			auth.DELETE("/:id", middleware.CustomRateLimit(rateLimiter, middleware.StrictRateLimitConfig), userController.DeleteUser)
+			auth.GET(
+				"/list",
+				middleware.CustomRateLimit(rateLimiter, middleware.LaxRateLimitConfig),
+				userController.GetUserList,
+			)
+			auth.GET(
+				"/search",
+				middleware.CustomRateLimit(rateLimiter, middleware.LaxRateLimitConfig),
+				userController.SearchUsers,
+			)
+			auth.GET(
+				"/:id",
+				middleware.CustomRateLimit(rateLimiter, middleware.APIRateLimitConfig),
+				userController.GetUserByID,
+			)
+			auth.DELETE(
+				"/:id",
+				middleware.CustomRateLimit(rateLimiter, middleware.StrictRateLimitConfig),
+				userController.DeleteUser,
+			)
 		}
 
 		// 移动端专用接口（只允许mobile和tablet设备类型）
@@ -79,12 +119,16 @@ func SetupRoutes() *gin.Engine {
 		mobile.Use(middleware.JWTAuth())
 		mobile.Use(middleware.DeviceTypeMiddleware("mobile", "tablet"))
 		{
-			mobile.GET("/config", middleware.CustomRateLimit(rateLimiter, middleware.APIRateLimitConfig), func(c *gin.Context) {
-				response.Success(c, gin.H{
-					"message":     "移动端配置",
-					"device_type": middleware.GetCurrentDeviceType(c),
-				})
-			})
+			mobile.GET(
+				"/config",
+				middleware.CustomRateLimit(rateLimiter, middleware.APIRateLimitConfig),
+				func(c *gin.Context) {
+					response.Success(c, gin.H{
+						"message":     "移动端配置",
+						"device_type": middleware.GetCurrentDeviceType(c),
+					})
+				},
+			)
 		}
 
 		// 管理后台接口（只允许web设备类型）
@@ -92,12 +136,16 @@ func SetupRoutes() *gin.Engine {
 		admin.Use(middleware.JWTAuth())
 		admin.Use(middleware.DeviceTypeMiddleware("web"))
 		{
-			admin.GET("/dashboard", middleware.CustomRateLimit(rateLimiter, middleware.APIRateLimitConfig), func(c *gin.Context) {
-				response.Success(c, gin.H{
-					"message":     "管理后台",
-					"device_type": middleware.GetCurrentDeviceType(c),
-				})
-			})
+			admin.GET(
+				"/dashboard",
+				middleware.CustomRateLimit(rateLimiter, middleware.APIRateLimitConfig),
+				func(c *gin.Context) {
+					response.Success(c, gin.H{
+						"message":     "管理后台",
+						"device_type": middleware.GetCurrentDeviceType(c),
+					})
+				},
+			)
 		}
 
 		// 自定义配置示例：创建一个极严格的限流配置
@@ -108,9 +156,13 @@ func SetupRoutes() *gin.Engine {
 		}
 
 		// 使用自定义配置的示例接口
-		api.POST("/dangerous-operation", middleware.CustomRateLimit(rateLimiter, veryStrictConfig), func(c *gin.Context) {
-			response.Success(c, gin.H{"message": "危险操作执行成功"})
-		})
+		api.POST(
+			"/dangerous-operation",
+			middleware.CustomRateLimit(rateLimiter, veryStrictConfig),
+			func(c *gin.Context) {
+				response.Success(c, gin.H{"message": "危险操作执行成功"})
+			},
+		)
 	}
 
 	return router

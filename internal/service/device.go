@@ -1,20 +1,19 @@
 package service
 
 import (
+	"ai-svc/internal/model"
+	"ai-svc/internal/repository"
+	"ai-svc/pkg/logger"
 	"crypto/md5"
 	"errors"
 	"fmt"
 	"sort"
 	"time"
 
-	"ai-svc/internal/model"
-	"ai-svc/internal/repository"
-	"ai-svc/pkg/logger"
-
 	"gorm.io/gorm"
 )
 
-// DeviceService 设备管理服务接口
+// DeviceService 设备管理服务接口.
 type DeviceService interface {
 	// 设备管理
 	RegisterDevice(userID uint, deviceInfo *model.DeviceInfo, clientIP, userAgent string) (*model.UserDevice, error)
@@ -37,13 +36,13 @@ type DeviceService interface {
 	CleanupOfflineDevices() error
 }
 
-// deviceService 设备管理服务实现
+// deviceService 设备管理服务实现.
 type deviceService struct {
 	deviceRepo repository.DeviceRepository
 	maxDevices int // 用户最大设备数量限制
 }
 
-// NewDeviceService 创建设备管理服务实例
+// NewDeviceService 创建设备管理服务实例.
 func NewDeviceService(deviceRepo repository.DeviceRepository) DeviceService {
 	return &deviceService{
 		deviceRepo: deviceRepo,
@@ -51,7 +50,7 @@ func NewDeviceService(deviceRepo repository.DeviceRepository) DeviceService {
 	}
 }
 
-// NewDeviceServiceWithLimit 创建带设备限制的设备管理服务实例
+// NewDeviceServiceWithLimit 创建带设备限制的设备管理服务实例.
 func NewDeviceServiceWithLimit(deviceRepo repository.DeviceRepository, maxDevices int) DeviceService {
 	return &deviceService{
 		deviceRepo: deviceRepo,
@@ -59,8 +58,12 @@ func NewDeviceServiceWithLimit(deviceRepo repository.DeviceRepository, maxDevice
 	}
 }
 
-// RegisterDevice 注册设备
-func (s *deviceService) RegisterDevice(userID uint, deviceInfo *model.DeviceInfo, clientIP, userAgent string) (*model.UserDevice, error) {
+// RegisterDevice 注册设备.
+func (s *deviceService) RegisterDevice(
+	userID uint,
+	deviceInfo *model.DeviceInfo,
+	clientIP, userAgent string,
+) (*model.UserDevice, error) {
 	// 检查是否已存在该设备
 	existingDevice, err := s.deviceRepo.GetDeviceByDeviceID(deviceInfo.DeviceID)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -113,7 +116,7 @@ func (s *deviceService) RegisterDevice(userID uint, deviceInfo *model.DeviceInfo
 	return device, nil
 }
 
-// GetUserDevices 获取用户设备列表
+// GetUserDevices 获取用户设备列表.
 func (s *deviceService) GetUserDevices(userID uint) (*model.UserDevicesResponse, error) {
 	devices, err := s.deviceRepo.GetUserDevices(userID)
 	if err != nil {
@@ -122,7 +125,7 @@ func (s *deviceService) GetUserDevices(userID uint) (*model.UserDevicesResponse,
 
 	onlineCount, err := s.deviceRepo.CountUserOnlineDevices(userID)
 	if err != nil {
-		logger.Error("获取用户在线设备数量失败", map[string]interface{}{"error": err.Error()})
+		logger.Error("获取用户在线设备数量失败", map[string]any{"error": err.Error()})
 		onlineCount = 0
 	}
 
@@ -152,7 +155,7 @@ func (s *deviceService) GetUserDevices(userID uint) (*model.UserDevicesResponse,
 	}, nil
 }
 
-// KickDevices 踢出指定设备
+// KickDevices 踢出指定设备.
 func (s *deviceService) KickDevices(userID uint, deviceIDs []string) error {
 	for _, deviceID := range deviceIDs {
 		// 验证设备是否属于该用户
@@ -170,24 +173,24 @@ func (s *deviceService) KickDevices(userID uint, deviceIDs []string) error {
 
 		// 删除设备的所有会话
 		if err := s.deviceRepo.DeleteDeviceSessions(deviceID); err != nil {
-			logger.Error("删除设备会话失败", map[string]interface{}{"error": err.Error(), "device_id": deviceID})
+			logger.Error("删除设备会话失败", map[string]any{"error": err.Error(), "device_id": deviceID})
 		}
 
 		// 标记设备为离线
 		if err := s.deviceRepo.MarkDeviceOffline(deviceID); err != nil {
-			logger.Error("标记设备离线失败", map[string]interface{}{"error": err.Error(), "device_id": deviceID})
+			logger.Error("标记设备离线失败", map[string]any{"error": err.Error(), "device_id": deviceID})
 		}
 	}
 
 	return nil
 }
 
-// UpdateDeviceActivity 更新设备活跃时间
+// UpdateDeviceActivity 更新设备活跃时间.
 func (s *deviceService) UpdateDeviceActivity(deviceID string) error {
 	return s.deviceRepo.UpdateDeviceActivity(deviceID)
 }
 
-// CreateSession 创建会话
+// CreateSession 创建会话.
 func (s *deviceService) CreateSession(userID uint, deviceID, jwtToken string) (*model.UserSession, error) {
 	// 生成会话Token
 	sessionToken := s.generateSessionToken(userID, deviceID)
@@ -207,12 +210,12 @@ func (s *deviceService) CreateSession(userID uint, deviceID, jwtToken string) (*
 	return session, nil
 }
 
-// GetSessionByToken 根据Token获取会话
+// GetSessionByToken 根据Token获取会话.
 func (s *deviceService) GetSessionByToken(token string) (*model.UserSession, error) {
 	return s.deviceRepo.GetSessionByToken(token)
 }
 
-// ValidateSession 验证会话
+// ValidateSession 验证会话.
 func (s *deviceService) ValidateSession(token string) (*model.UserSession, error) {
 	session, err := s.deviceRepo.GetSessionByToken(token)
 	if err != nil {
@@ -228,7 +231,7 @@ func (s *deviceService) ValidateSession(token string) (*model.UserSession, error
 	return session, nil
 }
 
-// ValidateDeviceSession 验证设备会话并检查设备限制
+// ValidateDeviceSession 验证设备会话并检查设备限制.
 func (s *deviceService) ValidateDeviceSession(userID uint, deviceID, sessionID string) (bool, error) {
 	// 1. 检查会话是否存在且有效
 	session, err := s.deviceRepo.GetSessionByToken(sessionID)
@@ -287,17 +290,17 @@ func (s *deviceService) ValidateDeviceSession(userID uint, deviceID, sessionID s
 	return true, nil
 }
 
-// UpdateSession 更新会话
+// UpdateSession 更新会话.
 func (s *deviceService) UpdateSession(session *model.UserSession) error {
 	return s.deviceRepo.UpdateSession(session)
 }
 
-// DeleteSession 删除会话
+// DeleteSession 删除会话.
 func (s *deviceService) DeleteSession(token string) error {
 	return s.deviceRepo.DeleteSession(token)
 }
 
-// CheckDeviceLimit 检查设备数量限制
+// CheckDeviceLimit 检查设备数量限制.
 func (s *deviceService) CheckDeviceLimit(userID uint) error {
 	count, err := s.deviceRepo.CountUserDevices(userID)
 	if err != nil {
@@ -314,7 +317,7 @@ func (s *deviceService) CheckDeviceLimit(userID uint) error {
 	return nil
 }
 
-// KickOldestDevice 踢出最旧的设备
+// KickOldestDevice 踢出最旧的设备.
 func (s *deviceService) KickOldestDevice(userID uint) error {
 	devices, err := s.deviceRepo.GetUserDevices(userID)
 	if err != nil {
@@ -330,7 +333,7 @@ func (s *deviceService) KickOldestDevice(userID uint) error {
 
 	// 删除设备的所有会话
 	if err := s.deviceRepo.DeleteDeviceSessions(oldestDevice.DeviceID); err != nil {
-		logger.Error("删除最旧设备会话失败", map[string]interface{}{"error": err.Error(), "device_id": oldestDevice.DeviceID})
+		logger.Error("删除最旧设备会话失败", map[string]any{"error": err.Error(), "device_id": oldestDevice.DeviceID})
 	}
 
 	// 删除设备记录
@@ -338,7 +341,7 @@ func (s *deviceService) KickOldestDevice(userID uint) error {
 		return err
 	}
 
-	logger.Info("踢出最旧设备", map[string]interface{}{
+	logger.Info("踢出最旧设备", map[string]any{
 		"user_id":     userID,
 		"device_id":   oldestDevice.DeviceID,
 		"device_name": oldestDevice.DeviceName,
@@ -347,17 +350,17 @@ func (s *deviceService) KickOldestDevice(userID uint) error {
 	return nil
 }
 
-// CleanupExpiredSessions 清理过期会话
+// CleanupExpiredSessions 清理过期会话.
 func (s *deviceService) CleanupExpiredSessions() error {
 	return s.deviceRepo.CleanExpiredSessions()
 }
 
-// CleanupOfflineDevices 清理离线设备
+// CleanupOfflineDevices 清理离线设备.
 func (s *deviceService) CleanupOfflineDevices() error {
 	return s.deviceRepo.CleanOfflineDevices()
 }
 
-// generateSessionToken 生成会话Token
+// generateSessionToken 生成会话Token.
 func (s *deviceService) generateSessionToken(userID uint, deviceID string) string {
 	data := fmt.Sprintf("%d:%s:%d", userID, deviceID, time.Now().Unix())
 	return fmt.Sprintf("%x", md5.Sum([]byte(data)))

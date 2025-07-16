@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"ai-svc/internal/config"
+	"ai-svc/internal/routes"
+	"ai-svc/pkg/logger"
 	"context"
 	"fmt"
 	"net/http"
@@ -9,24 +12,19 @@ import (
 	"syscall"
 	"time"
 
-	"ai-svc/internal/config"
-	"ai-svc/internal/routes"
-	"ai-svc/pkg/logger"
-
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
 var (
-	// 服务器启动相关的命令行参数
+	// 服务器启动相关的命令行参数.
 	serverPort    string // 服务器端口
 	serverMode    string // 运行模式：debug, release, test
 	enableProfile bool   // 是否启用性能分析
 )
 
-// serverCmd 定义了启动服务器的命令
-// 这是应用程序的主要命令，用于启动 HTTP 服务器
+// 这是应用程序的主要命令，用于启动 HTTP 服务器.
 var serverCmd = &cobra.Command{
 	Use:   "server",
 	Short: "启动 AI 服务 HTTP 服务器",
@@ -62,7 +60,7 @@ var serverCmd = &cobra.Command{
 	},
 }
 
-// init 函数用于初始化 server 命令的参数
+// init 函数用于初始化 server 命令的参数.
 func init() {
 	// 将 server 命令添加到根命令
 	rootCmd.AddCommand(serverCmd)
@@ -87,8 +85,7 @@ func init() {
 	viper.BindPFlag("server.profile", serverCmd.Flags().Lookup("profile"))
 }
 
-// runServer 是服务器启动的核心逻辑
-// 包含完整的启动流程：配置加载、日志初始化、服务器启动、优雅关闭
+// 包含完整的启动流程：配置加载、日志初始化、服务器启动、优雅关闭.
 func runServer() error {
 	fmt.Println("🚀 正在启动 AI 服务...")
 
@@ -121,7 +118,7 @@ func runServer() error {
 	return gracefulShutdown(server)
 }
 
-// loadConfiguration 加载应用配置
+// loadConfiguration 加载应用配置.
 func loadConfiguration() error {
 	// 确定配置文件路径
 	configPath := "./configs/config.yaml"
@@ -143,7 +140,7 @@ func loadConfiguration() error {
 	return nil
 }
 
-// initializeLogger 初始化日志系统
+// initializeLogger 初始化日志系统.
 func initializeLogger() error {
 	// 从配置中读取日志相关参数
 	logLevel := config.AppConfig.Log.Level
@@ -160,7 +157,7 @@ func initializeLogger() error {
 		return err
 	}
 
-	logger.Info("日志系统初始化成功", map[string]interface{}{
+	logger.Info("日志系统初始化成功", map[string]any{
 		"level":  logLevel,
 		"format": logFormat,
 		"output": logOutput,
@@ -169,12 +166,12 @@ func initializeLogger() error {
 	return nil
 }
 
-// applyCommandLineOverrides 应用命令行参数覆盖配置文件设置
+// applyCommandLineOverrides 应用命令行参数覆盖配置文件设置.
 func applyCommandLineOverrides() {
 	// 如果命令行指定了端口，覆盖配置文件中的端口设置
 	if serverPort != "" {
 		config.AppConfig.Server.Port = serverPort
-		logger.Info("端口被命令行参数覆盖", map[string]interface{}{
+		logger.Info("端口被命令行参数覆盖", map[string]any{
 			"port": serverPort,
 		})
 	}
@@ -182,29 +179,29 @@ func applyCommandLineOverrides() {
 	// 如果命令行指定了运行模式，覆盖配置文件中的模式设置
 	if serverMode != "" {
 		config.AppConfig.Server.Mode = serverMode
-		logger.Info("运行模式被命令行参数覆盖", map[string]interface{}{
+		logger.Info("运行模式被命令行参数覆盖", map[string]any{
 			"mode": serverMode,
 		})
 	}
 
 	// 如果启用了性能分析，记录日志
 	if enableProfile {
-		logger.Info("性能分析已启用", map[string]interface{}{
+		logger.Info("性能分析已启用", map[string]any{
 			"profile_enabled": true,
 		})
 	}
 }
 
-// setupGinMode 设置 Gin 框架的运行模式
+// setupGinMode 设置 Gin 框架的运行模式.
 func setupGinMode() {
 	gin.SetMode(config.AppConfig.Server.Mode)
 
-	logger.Info("Gin 框架模式设置完成", map[string]interface{}{
+	logger.Info("Gin 框架模式设置完成", map[string]any{
 		"gin_mode": config.AppConfig.Server.Mode,
 	})
 }
 
-// configureHTTPServer 配置 HTTP 服务器参数
+// configureHTTPServer 配置 HTTP 服务器参数.
 func configureHTTPServer(router *gin.Engine) *http.Server {
 	server := &http.Server{
 		Addr:         ":" + config.AppConfig.Server.Port,
@@ -215,7 +212,7 @@ func configureHTTPServer(router *gin.Engine) *http.Server {
 		MaxHeaderBytes: 1 << 20,
 	}
 
-	logger.Info("HTTP 服务器配置完成", map[string]interface{}{
+	logger.Info("HTTP 服务器配置完成", map[string]any{
 		"addr":          server.Addr,
 		"read_timeout":  config.AppConfig.Server.ReadTimeout,
 		"write_timeout": config.AppConfig.Server.WriteTimeout,
@@ -224,7 +221,7 @@ func configureHTTPServer(router *gin.Engine) *http.Server {
 	return server
 }
 
-// startServer 异步启动 HTTP 服务器
+// startServer 异步启动 HTTP 服务器.
 func startServer(server *http.Server) {
 	go func() {
 		fmt.Printf("🌟 服务器启动成功，监听端口: %s\n", config.AppConfig.Server.Port)
@@ -232,7 +229,7 @@ func startServer(server *http.Server) {
 		fmt.Printf("🔗 访问地址: http://localhost:%s\n", config.AppConfig.Server.Port)
 		fmt.Printf("💚 健康检查: http://localhost:%s/health\n", config.AppConfig.Server.Port)
 
-		logger.Info("服务器启动", map[string]interface{}{
+		logger.Info("服务器启动", map[string]any{
 			"port":    config.AppConfig.Server.Port,
 			"mode":    config.AppConfig.Server.Mode,
 			"version": "1.0.0",
@@ -241,15 +238,14 @@ func startServer(server *http.Server) {
 
 		// 启动服务器，如果失败则记录错误
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Fatal("服务器启动失败", map[string]interface{}{
+			logger.Fatal("服务器启动失败", map[string]any{
 				"error": err.Error(),
 			})
 		}
 	}()
 }
 
-// gracefulShutdown 实现优雅关闭
-// 等待系统信号，然后优雅地关闭服务器，确保正在处理的请求能够完成
+// 等待系统信号，然后优雅地关闭服务器，确保正在处理的请求能够完成.
 func gracefulShutdown(server *http.Server) error {
 	// 创建信号通道，监听系统中断信号
 	quit := make(chan os.Signal, 1)
@@ -261,7 +257,7 @@ func gracefulShutdown(server *http.Server) error {
 	sig := <-quit
 
 	fmt.Printf("\n🛑 收到关闭信号: %v\n", sig)
-	logger.Info("收到关闭信号，开始优雅关闭", map[string]interface{}{
+	logger.Info("收到关闭信号，开始优雅关闭", map[string]any{
 		"signal": sig.String(),
 	})
 
@@ -272,7 +268,7 @@ func gracefulShutdown(server *http.Server) error {
 	// 优雅关闭服务器
 	fmt.Println("⏳ 正在等待现有连接完成...")
 	if err := server.Shutdown(ctx); err != nil {
-		logger.Error("服务器强制关闭", map[string]interface{}{
+		logger.Error("服务器强制关闭", map[string]any{
 			"error": err.Error(),
 		})
 		return fmt.Errorf("服务器强制关闭: %w", err)

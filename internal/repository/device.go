@@ -1,15 +1,14 @@
 package repository
 
 import (
-	"time"
-
 	"ai-svc/internal/model"
 	"ai-svc/pkg/database"
+	"time"
 
 	"gorm.io/gorm"
 )
 
-// DeviceRepository 设备仓储接口
+// DeviceRepository 设备仓储接口.
 type DeviceRepository interface {
 	// 设备管理
 	CreateDevice(device *model.UserDevice) error
@@ -39,24 +38,24 @@ type DeviceRepository interface {
 	CleanOfflineDevices() error
 }
 
-// deviceRepository 设备仓储实现
+// deviceRepository 设备仓储实现.
 type deviceRepository struct {
 	db *gorm.DB
 }
 
-// NewDeviceRepository 创建设备仓储实例
+// NewDeviceRepository 创建设备仓储实例.
 func NewDeviceRepository() DeviceRepository {
 	return &deviceRepository{
 		db: database.GetDB(),
 	}
 }
 
-// CreateDevice 创建设备
+// CreateDevice 创建设备.
 func (r *deviceRepository) CreateDevice(device *model.UserDevice) error {
 	return r.db.Create(device).Error
 }
 
-// GetDeviceByID 根据ID获取设备
+// GetDeviceByID 根据ID获取设备.
 func (r *deviceRepository) GetDeviceByID(id uint) (*model.UserDevice, error) {
 	var device model.UserDevice
 	err := r.db.First(&device, id).Error
@@ -66,7 +65,7 @@ func (r *deviceRepository) GetDeviceByID(id uint) (*model.UserDevice, error) {
 	return &device, nil
 }
 
-// GetDeviceByDeviceID 根据设备ID获取设备
+// GetDeviceByDeviceID 根据设备ID获取设备.
 func (r *deviceRepository) GetDeviceByDeviceID(deviceID string) (*model.UserDevice, error) {
 	var device model.UserDevice
 	err := r.db.Where("device_id = ?", deviceID).First(&device).Error
@@ -76,14 +75,14 @@ func (r *deviceRepository) GetDeviceByDeviceID(deviceID string) (*model.UserDevi
 	return &device, nil
 }
 
-// GetUserDevices 获取用户所有设备
+// GetUserDevices 获取用户所有设备.
 func (r *deviceRepository) GetUserDevices(userID uint) ([]*model.UserDevice, error) {
 	var devices []*model.UserDevice
 	err := r.db.Where("user_id = ?", userID).Order("last_active_at DESC").Find(&devices).Error
 	return devices, err
 }
 
-// GetUserOnlineDevices 获取用户在线设备
+// GetUserOnlineDevices 获取用户在线设备.
 func (r *deviceRepository) GetUserOnlineDevices(userID uint) ([]*model.UserDevice, error) {
 	var devices []*model.UserDevice
 	thirtyMinutesAgo := time.Now().Add(-30 * time.Minute)
@@ -92,29 +91,29 @@ func (r *deviceRepository) GetUserOnlineDevices(userID uint) ([]*model.UserDevic
 	return devices, err
 }
 
-// UpdateDevice 更新设备
+// UpdateDevice 更新设备.
 func (r *deviceRepository) UpdateDevice(device *model.UserDevice) error {
 	return r.db.Save(device).Error
 }
 
-// DeleteDevice 删除设备
+// DeleteDevice 删除设备.
 func (r *deviceRepository) DeleteDevice(id uint) error {
 	return r.db.Delete(&model.UserDevice{}, id).Error
 }
 
-// DeleteDeviceByDeviceID 根据设备ID删除设备
+// DeleteDeviceByDeviceID 根据设备ID删除设备.
 func (r *deviceRepository) DeleteDeviceByDeviceID(deviceID string) error {
 	return r.db.Where("device_id = ?", deviceID).Delete(&model.UserDevice{}).Error
 }
 
-// CountUserDevices 统计用户设备数量
+// CountUserDevices 统计用户设备数量.
 func (r *deviceRepository) CountUserDevices(userID uint) (int64, error) {
 	var count int64
 	err := r.db.Model(&model.UserDevice{}).Where("user_id = ?", userID).Count(&count).Error
 	return count, err
 }
 
-// CountUserOnlineDevices 统计用户在线设备数量
+// CountUserOnlineDevices 统计用户在线设备数量.
 func (r *deviceRepository) CountUserOnlineDevices(userID uint) (int64, error) {
 	var count int64
 	thirtyMinutesAgo := time.Now().Add(-30 * time.Minute)
@@ -124,12 +123,12 @@ func (r *deviceRepository) CountUserOnlineDevices(userID uint) (int64, error) {
 	return count, err
 }
 
-// CreateSession 创建会话
+// CreateSession 创建会话.
 func (r *deviceRepository) CreateSession(session *model.UserSession) error {
 	return r.db.Create(session).Error
 }
 
-// GetSessionByToken 根据Token获取会话
+// GetSessionByToken 根据Token获取会话.
 func (r *deviceRepository) GetSessionByToken(token string) (*model.UserSession, error) {
 	var session model.UserSession
 	err := r.db.Where("session_token = ?", token).First(&session).Error
@@ -139,54 +138,54 @@ func (r *deviceRepository) GetSessionByToken(token string) (*model.UserSession, 
 	return &session, nil
 }
 
-// GetUserSessions 获取用户所有会话
+// GetUserSessions 获取用户所有会话.
 func (r *deviceRepository) GetUserSessions(userID uint) ([]*model.UserSession, error) {
 	var sessions []*model.UserSession
 	err := r.db.Where("user_id = ?", userID).Find(&sessions).Error
 	return sessions, err
 }
 
-// UpdateSession 更新会话
+// UpdateSession 更新会话.
 func (r *deviceRepository) UpdateSession(session *model.UserSession) error {
 	return r.db.Save(session).Error
 }
 
-// DeleteSession 删除会话
+// DeleteSession 删除会话.
 func (r *deviceRepository) DeleteSession(token string) error {
 	return r.db.Where("session_token = ?", token).Delete(&model.UserSession{}).Error
 }
 
-// DeleteUserSessions 删除用户所有会话
+// DeleteUserSessions 删除用户所有会话.
 func (r *deviceRepository) DeleteUserSessions(userID uint) error {
 	return r.db.Where("user_id = ?", userID).Delete(&model.UserSession{}).Error
 }
 
-// DeleteDeviceSessions 删除设备的所有会话
+// DeleteDeviceSessions 删除设备的所有会话.
 func (r *deviceRepository) DeleteDeviceSessions(deviceID string) error {
 	return r.db.Where("device_id = ?", deviceID).Delete(&model.UserSession{}).Error
 }
 
-// CleanExpiredSessions 清理过期会话
+// CleanExpiredSessions 清理过期会话.
 func (r *deviceRepository) CleanExpiredSessions() error {
 	return r.db.Where("expires_at < ?", time.Now()).Delete(&model.UserSession{}).Error
 }
 
-// UpdateDeviceActivity 更新设备活跃时间
+// UpdateDeviceActivity 更新设备活跃时间.
 func (r *deviceRepository) UpdateDeviceActivity(deviceID string) error {
 	return r.db.Model(&model.UserDevice{}).Where("device_id = ?", deviceID).
-		Updates(map[string]interface{}{
+		Updates(map[string]any{
 			"last_active_at": time.Now(),
 			"status":         1,
 		}).Error
 }
 
-// MarkDeviceOffline 标记设备离线
+// MarkDeviceOffline 标记设备离线.
 func (r *deviceRepository) MarkDeviceOffline(deviceID string) error {
 	return r.db.Model(&model.UserDevice{}).Where("device_id = ?", deviceID).
 		Update("status", 0).Error
 }
 
-// CleanOfflineDevices 清理离线设备
+// CleanOfflineDevices 清理离线设备.
 func (r *deviceRepository) CleanOfflineDevices() error {
 	// 30分钟没有活动的设备标记为离线
 	thirtyMinutesAgo := time.Now().Add(-30 * time.Minute)

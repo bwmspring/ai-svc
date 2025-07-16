@@ -4,9 +4,7 @@ package main
 
 import "ai-svc/cmd"
 
-// main 函数是程序的入口点
-// 它将控制权交给 Cobra 命令行框架来处理用户输入和命令执行
-// 所有的复杂逻辑都被封装在 cmd 包中，保持 main.go 的简洁性
+// 所有的复杂逻辑都被封装在 cmd 包中，保持 main.go 的简洁性.
 func main() {
 	// 执行 Cobra 根命令
 	// 这会解析命令行参数并路由到相应的子命令

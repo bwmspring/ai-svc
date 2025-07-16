@@ -6,26 +6,26 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Response 统一响应结构
+// Response 统一响应结构.
 type Response struct {
-	Code      int         `json:"code"`
-	Message   string      `json:"message"`
-	Data      interface{} `json:"data,omitempty"`
-	RequestID string      `json:"request_id,omitempty"`
+	Code      int    `json:"code"`
+	Message   string `json:"message"`
+	Data      any    `json:"data,omitempty"`
+	RequestID string `json:"request_id,omitempty"`
 }
 
-// PageResponse 分页响应结构
+// PageResponse 分页响应结构.
 type PageResponse struct {
-	Code      int         `json:"code"`
-	Message   string      `json:"message"`
-	Data      interface{} `json:"data,omitempty"`
-	Total     int64       `json:"total"`
-	Page      int         `json:"page"`
-	Size      int         `json:"size"`
-	RequestID string      `json:"request_id,omitempty"`
+	Code      int    `json:"code"`
+	Message   string `json:"message"`
+	Data      any    `json:"data,omitempty"`
+	Total     int64  `json:"total"`
+	Page      int    `json:"page"`
+	Size      int    `json:"size"`
+	RequestID string `json:"request_id,omitempty"`
 }
 
-// 常用响应码
+// 常用响应码.
 const (
 	SUCCESS              = 200 // 成功
 	ERROR                = 500 // 系统错误
@@ -39,8 +39,8 @@ const (
 	TOO_MANY_REQUESTS    = 429 // 请求过多
 )
 
-// Success 成功响应
-func Success(c *gin.Context, data interface{}) {
+// Success 成功响应.
+func Success(c *gin.Context, data any) {
 	c.JSON(http.StatusOK, Response{
 		Code:      SUCCESS,
 		Message:   "操作成功",
@@ -49,8 +49,8 @@ func Success(c *gin.Context, data interface{}) {
 	})
 }
 
-// SuccessWithMessage 带消息的成功响应
-func SuccessWithMessage(c *gin.Context, message string, data interface{}) {
+// SuccessWithMessage 带消息的成功响应.
+func SuccessWithMessage(c *gin.Context, message string, data any) {
 	c.JSON(http.StatusOK, Response{
 		Code:      SUCCESS,
 		Message:   message,
@@ -59,7 +59,7 @@ func SuccessWithMessage(c *gin.Context, message string, data interface{}) {
 	})
 }
 
-// Error 错误响应
+// Error 错误响应.
 func Error(c *gin.Context, code int, message string) {
 	httpStatus := getHTTPStatus(code)
 	c.JSON(httpStatus, Response{
@@ -69,8 +69,8 @@ func Error(c *gin.Context, code int, message string) {
 	})
 }
 
-// ErrorWithData 带数据的错误响应
-func ErrorWithData(c *gin.Context, code int, message string, data interface{}) {
+// ErrorWithData 带数据的错误响应.
+func ErrorWithData(c *gin.Context, code int, message string, data any) {
 	httpStatus := getHTTPStatus(code)
 	c.JSON(httpStatus, Response{
 		Code:      code,
@@ -80,8 +80,8 @@ func ErrorWithData(c *gin.Context, code int, message string, data interface{}) {
 	})
 }
 
-// Page 分页响应
-func Page(c *gin.Context, data interface{}, total int64, page, size int) {
+// Page 分页响应.
+func Page(c *gin.Context, data any, total int64, page, size int) {
 	c.JSON(http.StatusOK, PageResponse{
 		Code:      SUCCESS,
 		Message:   "查询成功",
@@ -93,8 +93,8 @@ func Page(c *gin.Context, data interface{}, total int64, page, size int) {
 	})
 }
 
-// PageWithMessage 带消息的分页响应
-func PageWithMessage(c *gin.Context, message string, data interface{}, total int64, page, size int) {
+// PageWithMessage 带消息的分页响应.
+func PageWithMessage(c *gin.Context, message string, data any, total int64, page, size int) {
 	c.JSON(http.StatusOK, PageResponse{
 		Code:      SUCCESS,
 		Message:   message,
@@ -106,7 +106,7 @@ func PageWithMessage(c *gin.Context, message string, data interface{}, total int
 	})
 }
 
-// getHTTPStatus 根据业务状态码获取HTTP状态码
+// getHTTPStatus 根据业务状态码获取HTTP状态码.
 func getHTTPStatus(code int) int {
 	switch code {
 	case SUCCESS:
@@ -132,7 +132,7 @@ func getHTTPStatus(code int) int {
 	}
 }
 
-// getRequestID 从上下文中获取请求ID
+// getRequestID 从上下文中获取请求ID.
 func getRequestID(c *gin.Context) string {
 	if requestID, exists := c.Get("request_id"); exists {
 		return requestID.(string)

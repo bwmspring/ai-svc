@@ -79,7 +79,7 @@ func (s *deviceService) KickOldestDevice(userID uint) error {
     
     // 3. 删除设备的所有会话（强制下线）
     if err := s.deviceRepo.DeleteDeviceSessions(oldestDevice.DeviceID); err != nil {
-        logger.Error("删除最旧设备会话失败", map[string]interface{}{
+        logger.Error("删除最旧设备会话失败", map[string]any{
             "error": err.Error(), 
             "device_id": oldestDevice.DeviceID
         })
@@ -91,7 +91,7 @@ func (s *deviceService) KickOldestDevice(userID uint) error {
     }
     
     // 5. 记录操作日志
-    logger.Info("踢出最旧设备", map[string]interface{}{
+    logger.Info("踢出最旧设备", map[string]any{
         "user_id":     userID,
         "device_id":   oldestDevice.DeviceID,
         "device_name": oldestDevice.DeviceName,
@@ -180,7 +180,7 @@ func (s *deviceService) notifyDeviceKicked(device *model.UserDevice) {
     // 发送推送通知
     // 发送邮件通知
     // 记录操作日志
-    logger.Info("设备被强制下线", map[string]interface{}{
+    logger.Info("设备被强制下线", map[string]any{
         "user_id":     device.UserID,
         "device_id":   device.DeviceID,
         "device_name": device.DeviceName,

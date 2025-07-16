@@ -8,27 +8,25 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// 版本信息常量
-// 这些变量通常在编译时通过 -ldflags 参数注入
+// 这些变量通常在编译时通过 -ldflags 参数注入.
 var (
-	// Version 应用程序版本号
-	// 在生产环境中，这个值会在编译时通过 go build -ldflags 注入
+	// 在生产环境中，这个值会在编译时通过 go build -ldflags 注入.
 	Version = "dev"
 
-	// GitCommit Git 提交哈希
+	// GitCommit Git 提交哈希.
 	GitCommit = "unknown"
 
-	// BuildTime 编译时间
+	// BuildTime 编译时间.
 	BuildTime = "unknown"
 
-	// GoVersion Go 语言版本
+	// GoVersion Go 语言版本.
 	GoVersion = runtime.Version()
 
-	// Platform 编译平台信息
+	// Platform 编译平台信息.
 	Platform = fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH)
 )
 
-// versionCmd 定义版本信息显示命令
+// versionCmd 定义版本信息显示命令.
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "显示版本信息",
@@ -49,7 +47,7 @@ var versionCmd = &cobra.Command{
 	},
 }
 
-// versionDetailCmd 定义详细版本信息命令
+// versionDetailCmd 定义详细版本信息命令.
 var versionDetailCmd = &cobra.Command{
 	Use:   "detail",
 	Short: "显示详细版本信息",
@@ -59,7 +57,7 @@ var versionDetailCmd = &cobra.Command{
 	},
 }
 
-// init 初始化版本相关命令
+// init 初始化版本相关命令.
 func init() {
 	// 将版本命令添加到根命令
 	rootCmd.AddCommand(versionCmd)
@@ -68,7 +66,7 @@ func init() {
 	versionCmd.AddCommand(versionDetailCmd)
 }
 
-// showVersion 显示基本版本信息
+// showVersion 显示基本版本信息.
 func showVersion() {
 	fmt.Printf("AI 服务 (ai-svc)\n")
 	fmt.Printf("版本: %s\n", Version)
@@ -85,7 +83,7 @@ func showVersion() {
 	fmt.Printf("平台: %s\n", Platform)
 }
 
-// showDetailedVersion 显示详细版本信息
+// showDetailedVersion 显示详细版本信息.
 func showDetailedVersion() {
 	// 基本版本信息
 	showVersion()
@@ -123,13 +121,12 @@ func showDetailedVersion() {
 	}
 }
 
-// bToKb 将字节转换为千字节
+// bToKb 将字节转换为千字节.
 func bToKb(b uint64) uint64 {
 	return b / 1024
 }
 
-// GetVersionInfo 返回版本信息的结构化数据
-// 这个函数可以被其他包调用，获取版本信息用于日志记录或 API 响应
+// 这个函数可以被其他包调用，获取版本信息用于日志记录或 API 响应.
 func GetVersionInfo() map[string]string {
 	return map[string]string{
 		"version":    Version,

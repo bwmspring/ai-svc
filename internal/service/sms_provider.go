@@ -1,19 +1,18 @@
 package service
 
 import (
+	"ai-svc/pkg/logger"
 	"errors"
 	"fmt"
-
-	"ai-svc/pkg/logger"
 )
 
-// SMSProvider 短信服务提供商接口
+// SMSProvider 短信服务提供商接口.
 type SMSProvider interface {
 	SendSMS(phone, code, purpose string) error
 	GetProviderName() string
 }
 
-// AliyunSMSProvider 阿里云短信服务提供商
+// AliyunSMSProvider 阿里云短信服务提供商.
 type AliyunSMSProvider struct {
 	AccessKeyID     string
 	AccessKeySecret string
@@ -21,7 +20,7 @@ type AliyunSMSProvider struct {
 	TemplateCode    string
 }
 
-// NewAliyunSMSProvider 创建阿里云短信服务提供商
+// NewAliyunSMSProvider 创建阿里云短信服务提供商.
 func NewAliyunSMSProvider(accessKeyID, accessKeySecret, signName, templateCode string) SMSProvider {
 	return &AliyunSMSProvider{
 		AccessKeyID:     accessKeyID,
@@ -31,7 +30,7 @@ func NewAliyunSMSProvider(accessKeyID, accessKeySecret, signName, templateCode s
 	}
 }
 
-// SendSMS 发送短信
+// SendSMS 发送短信.
 func (p *AliyunSMSProvider) SendSMS(phone, code, purpose string) error {
 	// 这里应该调用阿里云的短信 API
 	// 示例代码（需要引入阿里云SDK）:
@@ -59,7 +58,7 @@ func (p *AliyunSMSProvider) SendSMS(phone, code, purpose string) error {
 	*/
 
 	// 当前使用模拟实现
-	logger.Info("阿里云短信发送", map[string]interface{}{
+	logger.Info("阿里云短信发送", map[string]any{
 		"phone":   phone,
 		"code":    code,
 		"purpose": purpose,
@@ -68,12 +67,12 @@ func (p *AliyunSMSProvider) SendSMS(phone, code, purpose string) error {
 	return nil
 }
 
-// GetProviderName 获取服务提供商名称
+// GetProviderName 获取服务提供商名称.
 func (p *AliyunSMSProvider) GetProviderName() string {
 	return "阿里云短信"
 }
 
-// TencentSMSProvider 腾讯云短信服务提供商
+// TencentSMSProvider 腾讯云短信服务提供商.
 type TencentSMSProvider struct {
 	SecretID   string
 	SecretKey  string
@@ -82,7 +81,7 @@ type TencentSMSProvider struct {
 	TemplateID string
 }
 
-// NewTencentSMSProvider 创建腾讯云短信服务提供商
+// NewTencentSMSProvider 创建腾讯云短信服务提供商.
 func NewTencentSMSProvider(secretID, secretKey, appID, signName, templateID string) SMSProvider {
 	return &TencentSMSProvider{
 		SecretID:   secretID,
@@ -93,7 +92,7 @@ func NewTencentSMSProvider(secretID, secretKey, appID, signName, templateID stri
 	}
 }
 
-// SendSMS 发送短信
+// SendSMS 发送短信.
 func (p *TencentSMSProvider) SendSMS(phone, code, purpose string) error {
 	// 这里应该调用腾讯云的短信 API
 	// 示例代码（需要引入腾讯云SDK）:
@@ -123,7 +122,7 @@ func (p *TencentSMSProvider) SendSMS(phone, code, purpose string) error {
 	*/
 
 	// 当前使用模拟实现
-	logger.Info("腾讯云短信发送", map[string]interface{}{
+	logger.Info("腾讯云短信发送", map[string]any{
 		"phone":   phone,
 		"code":    code,
 		"purpose": purpose,
@@ -132,23 +131,23 @@ func (p *TencentSMSProvider) SendSMS(phone, code, purpose string) error {
 	return nil
 }
 
-// GetProviderName 获取服务提供商名称
+// GetProviderName 获取服务提供商名称.
 func (p *TencentSMSProvider) GetProviderName() string {
 	return "腾讯云短信"
 }
 
-// MockSMSProvider 模拟短信服务提供商（用于开发测试）
+// MockSMSProvider 模拟短信服务提供商（用于开发测试）.
 type MockSMSProvider struct{}
 
-// NewMockSMSProvider 创建模拟短信服务提供商
+// NewMockSMSProvider 创建模拟短信服务提供商.
 func NewMockSMSProvider() SMSProvider {
 	return &MockSMSProvider{}
 }
 
-// SendSMS 发送短信（模拟）
+// SendSMS 发送短信（模拟）.
 func (p *MockSMSProvider) SendSMS(phone, code, purpose string) error {
 	// 模拟发送过程
-	logger.Info("模拟短信发送", map[string]interface{}{
+	logger.Info("模拟短信发送", map[string]any{
 		"phone":   phone,
 		"code":    code,
 		"purpose": purpose,
@@ -163,7 +162,7 @@ func (p *MockSMSProvider) SendSMS(phone, code, purpose string) error {
 	return nil
 }
 
-// GetProviderName 获取服务提供商名称
+// GetProviderName 获取服务提供商名称.
 func (p *MockSMSProvider) GetProviderName() string {
 	return "模拟短信服务"
 }

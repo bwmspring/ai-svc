@@ -1,11 +1,10 @@
 package database
 
 import (
-	"fmt"
-	"time"
-
 	"ai-svc/internal/config"
 	"ai-svc/pkg/logger"
+	"fmt"
+	"time"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -14,7 +13,7 @@ import (
 
 var DB *gorm.DB
 
-// Connect 连接数据库
+// Connect 连接数据库.
 func Connect() error {
 	dbConfig := config.AppConfig.Database
 	dsn := dbConfig.GetDSN()
@@ -34,7 +33,7 @@ func Connect() error {
 		Logger: gormLogger.Default.LogMode(logLevel),
 	})
 	if err != nil {
-		logger.Error("数据库连接失败", map[string]interface{}{
+		logger.Error("数据库连接失败", map[string]any{
 			"error": err.Error(),
 			"dsn":   dsn,
 		})
@@ -58,7 +57,7 @@ func Connect() error {
 	}
 
 	DB = db
-	logger.Info("数据库连接成功", map[string]interface{}{
+	logger.Info("数据库连接成功", map[string]any{
 		"host":     dbConfig.Host,
 		"port":     dbConfig.Port,
 		"database": dbConfig.Database,
@@ -67,7 +66,7 @@ func Connect() error {
 	return nil
 }
 
-// Close 关闭数据库连接
+// Close 关闭数据库连接.
 func Close() error {
 	if DB != nil {
 		sqlDB, err := DB.DB()
@@ -79,7 +78,7 @@ func Close() error {
 	return nil
 }
 
-// GetDB 获取数据库实例
+// GetDB 获取数据库实例.
 func GetDB() *gorm.DB {
 	return DB
 }

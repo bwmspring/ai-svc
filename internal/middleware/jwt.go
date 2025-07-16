@@ -1,18 +1,17 @@
 package middleware
 
 import (
-	"strings"
-	"time"
-
 	"ai-svc/internal/config"
 	"ai-svc/pkg/logger"
 	"ai-svc/pkg/response"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// JWTClaims JWT载荷
+// JWTClaims JWT载荷.
 type JWTClaims struct {
 	UserID     uint   `json:"user_id"`
 	Phone      string `json:"phone"`
@@ -22,7 +21,7 @@ type JWTClaims struct {
 	jwt.RegisteredClaims
 }
 
-// JWTAuth 基础JWT认证中间件
+// JWTAuth 基础JWT认证中间件.
 func JWTAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		requestID := GetRequestID(c)
@@ -30,7 +29,7 @@ func JWTAuth() gin.HandlerFunc {
 		// 1. 提取Token
 		token := c.GetHeader("Authorization")
 		if token == "" {
-			logger.Warn("JWT认证失败：未提供认证令牌", map[string]interface{}{
+			logger.Warn("JWT认证失败：未提供认证令牌", map[string]any{
 				"request_id": requestID,
 				"path":       c.Request.URL.Path,
 			})
@@ -41,7 +40,7 @@ func JWTAuth() gin.HandlerFunc {
 
 		// 2. 检查Token格式
 		if !strings.HasPrefix(token, "Bearer ") {
-			logger.Warn("JWT认证失败：令牌格式错误", map[string]interface{}{
+			logger.Warn("JWT认证失败：令牌格式错误", map[string]any{
 				"request_id": requestID,
 			})
 			response.Error(c, response.UNAUTHORIZED, "认证令牌格式错误")
@@ -53,7 +52,7 @@ func JWTAuth() gin.HandlerFunc {
 		tokenString := strings.TrimPrefix(token, "Bearer ")
 		claims, err := ParseToken(tokenString)
 		if err != nil {
-			logger.Warn("JWT认证失败：令牌解析失败", map[string]interface{}{
+			logger.Warn("JWT认证失败：令牌解析失败", map[string]any{
 				"request_id": requestID,
 				"error":      err.Error(),
 			})
@@ -64,7 +63,7 @@ func JWTAuth() gin.HandlerFunc {
 
 		// 4. 检查Token是否过期
 		if time.Now().Unix() > claims.ExpiresAt.Unix() {
-			logger.Warn("JWT认证失败：令牌已过期", map[string]interface{}{
+			logger.Warn("JWT认证失败：令牌已过期", map[string]any{
 				"request_id": requestID,
 				"user_id":    claims.UserID,
 				"device_id":  claims.DeviceID,
@@ -83,7 +82,7 @@ func JWTAuth() gin.HandlerFunc {
 		c.Set("session_id", claims.SessionID)
 
 		// 记录成功认证日志
-		logger.Info("JWT认证成功", map[string]interface{}{
+		logger.Info("JWT认证成功", map[string]any{
 			"request_id":  requestID,
 			"user_id":     claims.UserID,
 			"phone":       claims.Phone,
@@ -96,7 +95,7 @@ func JWTAuth() gin.HandlerFunc {
 	}
 }
 
-// GenerateToken 生成JWT令牌
+// GenerateToken 生成JWT令牌.
 func GenerateToken(userID uint, phone, deviceID, deviceType, sessionID string) (string, error) {
 	expireTime := time.Now().Add(time.Duration(config.AppConfig.JWT.ExpireTime) * time.Second)
 
@@ -119,12 +118,11 @@ func GenerateToken(userID uint, phone, deviceID, deviceType, sessionID string) (
 	return token.SignedString([]byte(config.AppConfig.JWT.Secret))
 }
 
-// ParseToken 解析JWT令牌
+// ParseToken 解析JWT令牌.
 func ParseToken(tokenString string) (*JWTClaims, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (any, error) {
 		return []byte(config.AppConfig.JWT.Secret), nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +134,7 @@ func ParseToken(tokenString string) (*JWTClaims, error) {
 	return nil, jwt.ErrInvalidKey
 }
 
-// GetCurrentUserID 获取当前用户ID
+// GetCurrentUserID 获取当前用户ID.
 func GetCurrentUserID(c *gin.Context) uint {
 	if userID, exists := c.Get("user_id"); exists {
 		return userID.(uint)
@@ -144,7 +142,7 @@ func GetCurrentUserID(c *gin.Context) uint {
 	return 0
 }
 
-// GetCurrentPhone 获取当前用户手机号
+// GetCurrentPhone 获取当前用户手机号.
 func GetCurrentPhone(c *gin.Context) string {
 	if phone, exists := c.Get("phone"); exists {
 		return phone.(string)
@@ -152,7 +150,7 @@ func GetCurrentPhone(c *gin.Context) string {
 	return ""
 }
 
-// GetCurrentDeviceID 获取当前设备ID
+// GetCurrentDeviceID 获取当前设备ID.
 func GetCurrentDeviceID(c *gin.Context) string {
 	if deviceID, exists := c.Get("device_id"); exists {
 		return deviceID.(string)
@@ -160,7 +158,7 @@ func GetCurrentDeviceID(c *gin.Context) string {
 	return ""
 }
 
-// GetCurrentDeviceType 获取当前设备类型
+// GetCurrentDeviceType 获取当前设备类型.
 func GetCurrentDeviceType(c *gin.Context) string {
 	if deviceType, exists := c.Get("device_type"); exists {
 		return deviceType.(string)
@@ -168,7 +166,7 @@ func GetCurrentDeviceType(c *gin.Context) string {
 	return ""
 }
 
-// GetCurrentSessionID 获取当前会话ID
+// GetCurrentSessionID 获取当前会话ID.
 func GetCurrentSessionID(c *gin.Context) string {
 	if sessionID, exists := c.Get("session_id"); exists {
 		return sessionID.(string)
@@ -176,12 +174,12 @@ func GetCurrentSessionID(c *gin.Context) string {
 	return ""
 }
 
-// IsValidUser 检查当前用户是否有效
+// IsValidUser 检查当前用户是否有效.
 func IsValidUser(c *gin.Context) bool {
 	return GetCurrentUserID(c) > 0
 }
 
-// RequireValidUser 要求有效用户的中间件
+// RequireValidUser 要求有效用户的中间件.
 func RequireValidUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if !IsValidUser(c) {
@@ -193,7 +191,7 @@ func RequireValidUser() gin.HandlerFunc {
 	}
 }
 
-// DeviceTypeMiddleware 设备类型验证中间件
+// DeviceTypeMiddleware 设备类型验证中间件.
 func DeviceTypeMiddleware(allowedTypes ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		currentDeviceType := GetCurrentDeviceType(c)
@@ -209,7 +207,7 @@ func DeviceTypeMiddleware(allowedTypes ...string) gin.HandlerFunc {
 
 		if !allowed {
 			requestID := GetRequestID(c)
-			logger.Warn("设备类型验证失败", map[string]interface{}{
+			logger.Warn("设备类型验证失败", map[string]any{
 				"request_id":    requestID,
 				"current_type":  currentDeviceType,
 				"allowed_types": allowedTypes,

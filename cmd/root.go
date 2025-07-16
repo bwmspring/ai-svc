@@ -11,15 +11,14 @@ import (
 )
 
 var (
-	// cfgFile 配置文件路径，可通过命令行参数 --config 指定
+	// cfgFile 配置文件路径，可通过命令行参数 --config 指定.
 	cfgFile string
 
-	// verbose 详细输出模式，可通过 --verbose 或 -v 启用
+	// verbose 详细输出模式，可通过 --verbose 或 -v 启用.
 	verbose bool
 )
 
-// rootCmd 是应用程序的根命令
-// 当执行二进制文件但没有指定任何子命令时，会执行此命令
+// 当执行二进制文件但没有指定任何子命令时，会执行此命令.
 var rootCmd = &cobra.Command{
 	Use:   "ai-svc",
 	Short: "AI服务 - 智能化的微服务应用",
@@ -34,9 +33,7 @@ var rootCmd = &cobra.Command{
 	},
 }
 
-// Execute 是 Cobra 应用程序的入口点
-// 它会解析命令行参数并执行相应的命令
-// 如果执行过程中出现错误，程序将退出并返回错误代码
+// 如果执行过程中出现错误，程序将退出并返回错误代码.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "执行命令时发生错误: %v\n", err)
@@ -44,8 +41,7 @@ func Execute() {
 	}
 }
 
-// init 函数在包加载时自动执行
-// 用于初始化命令行参数和配置
+// 用于初始化命令行参数和配置.
 func init() {
 	// 在 Cobra 初始化时调用配置初始化函数
 	cobra.OnInitialize(initConfig)
@@ -65,8 +61,7 @@ func init() {
 	viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
 }
 
-// initConfig 初始化配置文件读取
-// 该函数会在每个命令执行前被调用，用于加载配置文件
+// 该函数会在每个命令执行前被调用，用于加载配置文件.
 func initConfig() {
 	if cfgFile != "" {
 		// 如果用户指定了配置文件路径，则使用指定的文件

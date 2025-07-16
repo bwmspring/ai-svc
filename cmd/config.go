@@ -1,18 +1,17 @@
 package cmd
 
 import (
+	"ai-svc/internal/config"
 	"fmt"
 	"os"
 	"path/filepath"
-
-	"ai-svc/internal/config"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
 )
 
-// configCmd 定义配置管理的主命令
+// configCmd 定义配置管理的主命令.
 var configCmd = &cobra.Command{
 	Use:   "config",
 	Short: "配置文件管理工具",
@@ -29,7 +28,7 @@ var configCmd = &cobra.Command{
   ai-svc config generate         # 生成默认配置模板`,
 }
 
-// configShowCmd 显示当前配置
+// configShowCmd 显示当前配置.
 var configShowCmd = &cobra.Command{
 	Use:   "show",
 	Short: "显示当前配置信息",
@@ -44,7 +43,7 @@ var configShowCmd = &cobra.Command{
 	},
 }
 
-// configValidateCmd 验证配置文件
+// configValidateCmd 验证配置文件.
 var configValidateCmd = &cobra.Command{
 	Use:   "validate",
 	Short: "验证配置文件格式和内容",
@@ -60,7 +59,7 @@ var configValidateCmd = &cobra.Command{
 	},
 }
 
-// configGenerateCmd 生成配置文件模板
+// configGenerateCmd 生成配置文件模板.
 var configGenerateCmd = &cobra.Command{
 	Use:   "generate",
 	Short: "生成默认配置文件模板",
@@ -78,13 +77,13 @@ var configGenerateCmd = &cobra.Command{
 	},
 }
 
-// 配置相关的命令行参数
+// 配置相关的命令行参数.
 var (
 	outputFile string // 输出文件路径（用于 generate 命令）
 	format     string // 输出格式（yaml, json）
 )
 
-// init 初始化配置相关命令
+// init 初始化配置相关命令.
 func init() {
 	// 将配置命令添加到根命令
 	rootCmd.AddCommand(configCmd)
@@ -101,9 +100,9 @@ func init() {
 		"输出格式 (yaml|json)")
 }
 
-// showConfig 显示当前配置信息
+// showConfig 显示当前配置信息.
 func showConfig() error {
-	fmt.Println("=== AI 服务配置信息 ===\n")
+	fmt.Println("=== AI 服务配置信息 ===")
 
 	// 显示配置文件信息
 	if viper.ConfigFileUsed() != "" {
@@ -159,7 +158,7 @@ func showConfig() error {
 	return nil
 }
 
-// validateConfig 验证配置文件
+// validateConfig 验证配置文件.
 func validateConfig() error {
 	fmt.Println("🔍 验证配置文件...")
 
@@ -217,24 +216,24 @@ func validateConfig() error {
 	return nil
 }
 
-// generateConfig 生成配置文件模板
+// generateConfig 生成配置文件模板.
 func generateConfig() error {
 	fmt.Printf("📝 生成配置文件模板: %s\n", outputFile)
 
 	// 创建默认配置结构
-	defaultConfig := map[string]interface{}{
-		"server": map[string]interface{}{
+	defaultConfig := map[string]any{
+		"server": map[string]any{
 			"port":          "8080",
 			"mode":          "debug",
 			"read_timeout":  30,
 			"write_timeout": 30,
 		},
-		"log": map[string]interface{}{
+		"log": map[string]any{
 			"level":  "info",
 			"format": "json",
 			"output": "stdout",
 		},
-		"database": map[string]interface{}{
+		"database": map[string]any{
 			"host":     "localhost",
 			"port":     3306,
 			"username": "ai_svc",
@@ -242,16 +241,16 @@ func generateConfig() error {
 			"database": "ai_svc",
 			"charset":  "utf8mb4",
 		},
-		"sms": map[string]interface{}{
+		"sms": map[string]any{
 			"provider": "aliyun",
-			"config": map[string]interface{}{
+			"config": map[string]any{
 				"access_key_id":     "your_access_key_id",
 				"access_key_secret": "your_access_key_secret",
 				"sign_name":         "your_sign_name",
 				"template_code":     "your_template_code",
 			},
 		},
-		"jwt": map[string]interface{}{
+		"jwt": map[string]any{
 			"secret":        "your_jwt_secret_key_change_in_production",
 			"expiry_hours":  24,
 			"refresh_hours": 72,
@@ -261,7 +260,7 @@ func generateConfig() error {
 
 	// 确保输出目录存在
 	outputDir := filepath.Dir(outputFile)
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
+	if err := os.MkdirAll(outputDir, 0o755); err != nil {
 		return fmt.Errorf("创建输出目录失败: %w", err)
 	}
 
@@ -302,7 +301,7 @@ func generateConfig() error {
 	}
 
 	// 写入文件
-	if err := os.WriteFile(outputFile, data, 0644); err != nil {
+	if err := os.WriteFile(outputFile, data, 0o644); err != nil {
 		return fmt.Errorf("写入文件失败: %w", err)
 	}
 

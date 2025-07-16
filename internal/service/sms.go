@@ -1,31 +1,30 @@
 package service
 
 import (
+	"ai-svc/internal/model"
+	"ai-svc/internal/repository"
+	"ai-svc/pkg/logger"
 	"crypto/rand"
 	"errors"
 	"math/big"
 	"time"
 
-	"ai-svc/internal/model"
-	"ai-svc/internal/repository"
-	"ai-svc/pkg/logger"
-
 	"gorm.io/gorm"
 )
 
-// SMSService 短信服务接口
+// SMSService 短信服务接口.
 type SMSService interface {
 	SendVerificationCode(req *model.SendSMSRequest, clientIP string) error
 	ValidateVerificationCode(phone, code, purpose string) error
 }
 
-// smsService 短信服务实现
+// smsService 短信服务实现.
 type smsService struct {
 	smsRepo     repository.SMSRepository
 	smsProvider SMSProvider
 }
 
-// NewSMSService 创建短信服务实例
+// NewSMSService 创建短信服务实例.
 func NewSMSService(smsRepo repository.SMSRepository) SMSService {
 	return &smsService{
 		smsRepo:     smsRepo,
@@ -33,7 +32,7 @@ func NewSMSService(smsRepo repository.SMSRepository) SMSService {
 	}
 }
 
-// NewSMSServiceWithProvider 创建带指定提供商的短信服务实例
+// NewSMSServiceWithProvider 创建带指定提供商的短信服务实例.
 func NewSMSServiceWithProvider(smsRepo repository.SMSRepository, provider SMSProvider) SMSService {
 	return &smsService{
 		smsRepo:     smsRepo,
@@ -41,7 +40,7 @@ func NewSMSServiceWithProvider(smsRepo repository.SMSRepository, provider SMSPro
 	}
 }
 
-// SendVerificationCode 发送短信验证码
+// SendVerificationCode 发送短信验证码.
 func (s *smsService) SendVerificationCode(req *model.SendSMSRequest, clientIP string) error {
 	// 1. 防刷校验：检查发送频率限制
 	if err := s.checkSendFrequency(req.Phone, clientIP); err != nil {
@@ -56,7 +55,7 @@ func (s *smsService) SendVerificationCode(req *model.SendSMSRequest, clientIP st
 	// 3. 生成6位随机验证码
 	code, err := s.generateVerificationCode()
 	if err != nil {
-		logger.Error("生成验证码失败", map[string]interface{}{"error": err.Error()})
+		logger.Error("生成验证码失败", map[string]any{"error": err.Error()})
 		return errors.New("生成验证码失败")
 	}
 
@@ -71,13 +70,13 @@ func (s *smsService) SendVerificationCode(req *model.SendSMSRequest, clientIP st
 
 	// 5. 保存验证码
 	if err := s.smsRepo.CreateSMSCode(smsCode); err != nil {
-		logger.Error("保存验证码失败", map[string]interface{}{"error": err.Error()})
+		logger.Error("保存验证码失败", map[string]any{"error": err.Error()})
 		return errors.New("保存验证码失败")
 	}
 
 	// 6. 调用短信服务商发送短信
 	if err := s.sendSMSToProvider(req.Phone, code, req.Purpose); err != nil {
-		logger.Error("发送短信失败", map[string]interface{}{"error": err.Error(), "phone": req.Phone})
+		logger.Error("发送短信失败", map[string]any{"error": err.Error(), "phone": req.Phone})
 		return errors.New("发送短信失败")
 	}
 
@@ -87,7 +86,7 @@ func (s *smsService) SendVerificationCode(req *model.SendSMSRequest, clientIP st
 	return nil
 }
 
-// ValidateVerificationCode 验证短信验证码
+// ValidateVerificationCode 验证短信验证码.
 func (s *smsService) ValidateVerificationCode(phone, code, purpose string) error {
 	smsCode, err := s.smsRepo.GetLatestSMSCode(phone, purpose)
 	if err != nil {
@@ -103,7 +102,7 @@ func (s *smsService) ValidateVerificationCode(phone, code, purpose string) error
 
 	if smsCode.Code != code {
 		// 记录验证失败日志
-		logger.Warn("验证码验证失败", map[string]interface{}{
+		logger.Warn("验证码验证失败", map[string]any{
 			"phone":   phone,
 			"purpose": purpose,
 			"ip":      smsCode.ClientIP,
@@ -114,13 +113,13 @@ func (s *smsService) ValidateVerificationCode(phone, code, purpose string) error
 	// 标记验证码为已使用
 	smsCode.MarkAsUsed()
 	if err := s.smsRepo.UpdateSMSCode(smsCode); err != nil {
-		logger.Error("更新验证码状态失败", map[string]interface{}{"error": err.Error()})
+		logger.Error("更新验证码状态失败", map[string]any{"error": err.Error()})
 	}
 
 	return nil
 }
 
-// checkSendFrequency 检查发送频率限制
+// checkSendFrequency 检查发送频率限制.
 func (s *smsService) checkSendFrequency(phone, clientIP string) error {
 	// 同一手机号1分钟内只能发送1次
 	if count, err := s.smsRepo.CountSMSInDuration(phone, "", 1*time.Minute); err == nil && count > 0 {
@@ -140,7 +139,7 @@ func (s *smsService) checkSendFrequency(phone, clientIP string) error {
 	return nil
 }
 
-// checkExistingCode 检查是否已有有效验证码
+// checkExistingCode 检查是否已有有效验证码.
 func (s *smsService) checkExistingCode(phone, purpose string) error {
 	smsCode, err := s.smsRepo.GetLatestSMSCode(phone, purpose)
 	if err != nil {
@@ -161,7 +160,7 @@ func (s *smsService) checkExistingCode(phone, purpose string) error {
 	return nil
 }
 
-// generateVerificationCode 生成6位随机验证码
+// generateVerificationCode 生成6位随机验证码.
 func (s *smsService) generateVerificationCode() (string, error) {
 	const chars = "0123456789"
 	code := make([]byte, 6)
@@ -175,14 +174,14 @@ func (s *smsService) generateVerificationCode() (string, error) {
 	return string(code), nil
 }
 
-// sendSMSToProvider 调用短信服务商发送短信
+// sendSMSToProvider 调用短信服务商发送短信.
 func (s *smsService) sendSMSToProvider(phone, code, purpose string) error {
 	return s.smsProvider.SendSMS(phone, code, purpose)
 }
 
-// logSMSSend 记录短信发送日志
+// logSMSSend 记录短信发送日志.
 func (s *smsService) logSMSSend(phone, purpose, clientIP string) {
-	logger.Info("短信发送成功", map[string]interface{}{
+	logger.Info("短信发送成功", map[string]any{
 		"phone":     phone,
 		"purpose":   purpose,
 		"client_ip": clientIP,

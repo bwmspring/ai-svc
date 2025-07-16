@@ -1,15 +1,14 @@
 package middleware
 
 import (
+	"ai-svc/pkg/response"
 	"sync"
 	"time"
-
-	"ai-svc/pkg/response"
 
 	"github.com/gin-gonic/gin"
 )
 
-// RateLimitConfig 限流配置
+// RateLimitConfig 限流配置.
 type RateLimitConfig struct {
 	Capacity       int           // 令牌桶容量
 	RefillRate     int           // 补充的令牌数
@@ -17,19 +16,19 @@ type RateLimitConfig struct {
 	ErrorMsg       string        // 自定义错误消息
 }
 
-// RateLimiter 频率限制器
+// RateLimiter 频率限制器.
 type RateLimiter struct {
 	visitors map[string]*Visitor
 	mu       sync.RWMutex
 }
 
-// Visitor 访问者信息
+// Visitor 访问者信息.
 type Visitor struct {
 	limiters map[string]*TokenBucket // 支持多个限流器（用于不同接口）
 	lastSeen time.Time
 }
 
-// TokenBucket 令牌桶
+// TokenBucket 令牌桶.
 type TokenBucket struct {
 	tokens         int
 	capacity       int
@@ -39,7 +38,7 @@ type TokenBucket struct {
 	mu             sync.Mutex
 }
 
-// NewRateLimiter 创建频率限制器
+// NewRateLimiter 创建频率限制器.
 func NewRateLimiter() *RateLimiter {
 	rl := &RateLimiter{
 		visitors: make(map[string]*Visitor),
@@ -51,7 +50,7 @@ func NewRateLimiter() *RateLimiter {
 	return rl
 }
 
-// NewTokenBucket 创建令牌桶
+// NewTokenBucket 创建令牌桶.
 func NewTokenBucket(capacity, refillRate int, refillInterval time.Duration) *TokenBucket {
 	return &TokenBucket{
 		tokens:         capacity,
@@ -62,7 +61,7 @@ func NewTokenBucket(capacity, refillRate int, refillInterval time.Duration) *Tok
 	}
 }
 
-// Allow 检查是否允许请求
+// Allow 检查是否允许请求.
 func (tb *TokenBucket) Allow() bool {
 	tb.mu.Lock()
 	defer tb.mu.Unlock()
@@ -89,7 +88,7 @@ func (tb *TokenBucket) Allow() bool {
 	return false
 }
 
-// GetVisitor 获取访问者
+// GetVisitor 获取访问者.
 func (rl *RateLimiter) GetVisitor(ip string) *Visitor {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
@@ -107,7 +106,7 @@ func (rl *RateLimiter) GetVisitor(ip string) *Visitor {
 	return visitor
 }
 
-// GetLimiter 获取指定接口的限流器
+// GetLimiter 获取指定接口的限流器.
 func (v *Visitor) GetLimiter(endpoint string, config RateLimitConfig) *TokenBucket {
 	limiter, exists := v.limiters[endpoint]
 	if !exists {
@@ -117,7 +116,7 @@ func (v *Visitor) GetLimiter(endpoint string, config RateLimitConfig) *TokenBuck
 	return limiter
 }
 
-// cleanupVisitors 清理过期的访问者
+// cleanupVisitors 清理过期的访问者.
 func (rl *RateLimiter) cleanupVisitors() {
 	for {
 		time.Sleep(time.Minute)
@@ -131,7 +130,7 @@ func (rl *RateLimiter) cleanupVisitors() {
 	}
 }
 
-// DefaultRateLimitConfig 默认限流配置
+// DefaultRateLimitConfig 默认限流配置.
 var DefaultRateLimitConfig = RateLimitConfig{
 	Capacity:       1,
 	RefillRate:     1,
@@ -139,7 +138,7 @@ var DefaultRateLimitConfig = RateLimitConfig{
 	ErrorMsg:       "请求过于频繁，请稍后再试",
 }
 
-// CustomRateLimit 自定义限流中间件
+// CustomRateLimit 自定义限流中间件.
 func CustomRateLimit(limiter *RateLimiter, config ...RateLimitConfig) gin.HandlerFunc {
 	// 如果没有传入配置，使用默认配置
 	cfg := DefaultRateLimitConfig
@@ -177,7 +176,7 @@ func CustomRateLimit(limiter *RateLimiter, config ...RateLimitConfig) gin.Handle
 	}
 }
 
-// SMSRateLimit SMS发送频率限制中间件（保持向后兼容）
+// SMSRateLimit SMS发送频率限制中间件（保持向后兼容）.
 func SMSRateLimit(limiter *RateLimiter) gin.HandlerFunc {
 	smsConfig := RateLimitConfig{
 		Capacity:       1,

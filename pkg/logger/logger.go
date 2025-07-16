@@ -8,7 +8,7 @@ import (
 
 var Log *logrus.Logger
 
-// Init 初始化日志
+// Init 初始化日志.
 func Init(level, format, output string) error {
 	Log = logrus.New()
 
@@ -57,8 +57,8 @@ func Init(level, format, output string) error {
 	return nil
 }
 
-// Debug 调试日志
-func Debug(message string, fields map[string]interface{}) {
+// Debug 调试日志.
+func Debug(message string, fields map[string]any) {
 	if fields != nil {
 		Log.WithFields(logrus.Fields(fields)).Debug(message)
 	} else {
@@ -66,8 +66,8 @@ func Debug(message string, fields map[string]interface{}) {
 	}
 }
 
-// Info 信息日志
-func Info(message string, fields map[string]interface{}) {
+// Info 信息日志.
+func Info(message string, fields map[string]any) {
 	if fields != nil {
 		Log.WithFields(logrus.Fields(fields)).Info(message)
 	} else {
@@ -75,8 +75,8 @@ func Info(message string, fields map[string]interface{}) {
 	}
 }
 
-// Warn 警告日志
-func Warn(message string, fields map[string]interface{}) {
+// Warn 警告日志.
+func Warn(message string, fields map[string]any) {
 	if fields != nil {
 		Log.WithFields(logrus.Fields(fields)).Warn(message)
 	} else {
@@ -84,8 +84,8 @@ func Warn(message string, fields map[string]interface{}) {
 	}
 }
 
-// Error 错误日志
-func Error(message string, fields map[string]interface{}) {
+// Error 错误日志.
+func Error(message string, fields map[string]any) {
 	if fields != nil {
 		Log.WithFields(logrus.Fields(fields)).Error(message)
 	} else {
@@ -93,8 +93,8 @@ func Error(message string, fields map[string]interface{}) {
 	}
 }
 
-// Fatal 致命错误日志
-func Fatal(message string, fields map[string]interface{}) {
+// Fatal 致命错误日志.
+func Fatal(message string, fields map[string]any) {
 	if fields != nil {
 		Log.WithFields(logrus.Fields(fields)).Fatal(message)
 	} else {

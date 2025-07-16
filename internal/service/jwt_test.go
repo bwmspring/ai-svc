@@ -1,14 +1,13 @@
 package service
 
 import (
-	"testing"
-
 	"ai-svc/internal/config"
 	"ai-svc/internal/model"
 	"ai-svc/pkg/logger"
+	"testing"
 )
 
-// TestJWTService 测试JWT服务
+// TestJWTService 测试JWT服务.
 func TestJWTService(t *testing.T) {
 	// 加载配置
 	if err := config.LoadConfig("../../configs/config.yaml"); err != nil {

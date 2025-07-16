@@ -1,0 +1,208 @@
+# golangci-lint 配置文件
+# 详细配置文档: https://golangci-lint.run/usage/configuration/
+
+# 运行配置
+run:
+  # 超时时间
+  timeout: 5m
+  # 要检查的目录
+  modules-download-mode: readonly
+
+# 输出配置
+output:
+  # 输出格式
+  formats:
+    - format: colored-line-number
+  # 打印检查的文件数
+  print-issued-files: true
+  # 打印检查的行数
+  print-linter-name: true
+  # 排序结果
+  sort-results: true
+
+# 检查器配置
+linters:
+  # 禁用所有默认检查器
+  disable-all: true
+  # 启用的检查器
+  enable:
+    # 基础检查
+    - errcheck      # 检查错误处理
+    - gosimple      # 简化代码
+    - govet         # Go 官方检查器
+    - ineffassign   # 无效的赋值
+    - staticcheck   # 静态分析
+    - typecheck     # 类型检查
+    - unused        # 未使用的代码
+    
+    # 代码质量
+    - gocyclo       # 圈复杂度
+    - gofmt         # 代码格式化
+    - goimports     # import 排序
+    - misspell      # 拼写检查
+    - unconvert     # 不必要的类型转换
+    - unparam       # 未使用的参数
+    - gocritic      # 代码审查
+    
+    # 安全检查
+    - gosec         # 安全检查
+    
+    # 性能检查
+    - prealloc      # 预分配切片
+    
+    # 代码风格
+    - whitespace    # 空白符检查
+    - lll           # 行长度检查
+    
+    # 错误处理
+    - errorlint     # 错误处理最佳实践
+    
+    # 注释检查
+    - godot         # 注释句号检查
+    
+    # 导入检查
+    - gci           # import 分组和排序
+
+# 检查器特定配置
+linters-settings:
+  # 圈复杂度检查
+  gocyclo:
+    min-complexity: 15
+  
+  # 代码审查
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - style
+      - performance
+      - experimental
+      - opinionated
+    disabled-checks:
+      - commentedOutCode
+      - whyNoLint
+      - unnecessaryBlock  # 允许不必要的代码块，有时为了代码结构清晰
+  
+  # 安全检查
+  gosec:
+    severity: "low"
+    confidence: "low"
+    excludes:
+      - G304 # 文件路径可能来自用户输入
+      - G401 # 允许使用MD5（用于非安全场景如设备ID生成）
+      - G501 # 允许导入crypto/md5
+  
+  # 行长度检查
+  lll:
+    line-length: 120
+    tab-width: 4
+  
+  # import 分组
+  gci:
+    sections:
+      - standard
+      - default
+      - prefix(ai-svc)
+  
+  # 预分配检查
+  prealloc:
+    simple: true
+    range-loops: true
+    for-loops: true
+  
+  # 空白符检查
+  whitespace:
+    multi-if: false
+    multi-func: false
+
+# 问题配置
+issues:
+  # 排除使用默认的排除模式
+  exclude-use-default: false
+  
+  # 最大问题数量，0表示无限制
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  
+  # 取消重复的结果
+  uniq-by-line: true
+  
+  # 排除的文件模式
+  exclude-files:
+    - ".*_test.go"
+    - ".*\\.pb\\.go"
+  
+  # 排除的目录
+  exclude-dirs:
+    - vendor
+    - build
+    - docs
+  
+  # 排除的规则
+  exclude-rules:
+    # 排除测试文件的某些检查
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - errcheck
+        - dupl
+        - gosec
+        - gocritic
+        - lll
+        - unparam
+    
+    # 排除主函数的某些检查
+    - path: cmd/
+      linters:
+        - gocyclo
+        - errcheck  # CMD 层可以忽略一些错误检查
+    
+    # 排除配置文件的检查
+    - path: configs/
+      linters:
+        - lll
+    
+    # 排除特定的错误消息
+    - text: "commentedOutCode"
+      linters:
+        - gocritic
+    
+    # 排除变量名检查
+    - text: "var-naming"
+      linters:
+        - revive
+    
+    # 排除长行检查对于某些特殊情况
+    - text: "line is .* characters"
+      linters:
+        - lll
+      source: "^\\s*(//|/\\*)"  # 注释行
+    
+    # 排除模型文件中的长行（通常是 gorm 标签）
+    - path: internal/model/
+      text: "line is .* characters"
+      linters:
+        - lll
+    
+    # 排除中间件中长行（通常是CORS头部设置）
+    - path: internal/middleware/
+      text: "line is .* characters"
+      linters:
+        - lll
+
+# 严重性配置
+severity:
+  default-severity: error
+  case-sensitive: false
+  rules:
+    - linters:
+        - misspell
+      severity: warning
+    - linters:
+        - gocritic
+      severity: info
+    - linters:
+        - lll
+      severity: warning
+    - linters:
+        - unparam
+      severity: warning 

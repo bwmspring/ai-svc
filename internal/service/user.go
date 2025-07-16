@@ -1,17 +1,16 @@
 package service
 
 import (
-	"errors"
-	"time"
-
 	"ai-svc/internal/model"
 	"ai-svc/internal/repository"
 	"ai-svc/pkg/logger"
+	"errors"
+	"time"
 
 	"gorm.io/gorm"
 )
 
-// UserService 用户服务接口
+// UserService 用户服务接口.
 type UserService interface {
 	// 认证相关
 	LoginWithSMS(req *model.LoginWithSMSRequest, ip, userAgent string) (*model.LoginResponse, bool, error)
@@ -28,7 +27,7 @@ type UserService interface {
 	KickDevices(userID uint, req *model.KickDeviceRequest) error
 }
 
-// userService 用户服务实现
+// userService 用户服务实现.
 type userService struct {
 	userRepo      repository.UserRepository
 	smsService    SMSService
@@ -36,8 +35,12 @@ type userService struct {
 	jwtService    JWTService
 }
 
-// NewUserService 创建用户服务实例
-func NewUserService(userRepo repository.UserRepository, smsService SMSService, deviceService DeviceService) UserService {
+// NewUserService 创建用户服务实例.
+func NewUserService(
+	userRepo repository.UserRepository,
+	smsService SMSService,
+	deviceService DeviceService,
+) UserService {
 	return &userService{
 		userRepo:      userRepo,
 		smsService:    smsService,
@@ -46,8 +49,11 @@ func NewUserService(userRepo repository.UserRepository, smsService SMSService, d
 	}
 }
 
-// LoginWithSMS 手机号+验证码登录（同时完成注册）
-func (s *userService) LoginWithSMS(req *model.LoginWithSMSRequest, ip, userAgent string) (*model.LoginResponse, bool, error) {
+// LoginWithSMS 手机号+验证码登录（同时完成注册）.
+func (s *userService) LoginWithSMS(
+	req *model.LoginWithSMSRequest,
+	ip, userAgent string,
+) (*model.LoginResponse, bool, error) {
 	// 验证验证码
 	if err := s.smsService.ValidateVerificationCode(req.Phone, req.Code, "login"); err != nil {
 		return nil, false, err
@@ -75,12 +81,12 @@ func (s *userService) LoginWithSMS(req *model.LoginWithSMSRequest, ip, userAgent
 			user.LastLoginAt = &now
 
 			if err := s.userRepo.Create(user); err != nil {
-				logger.Error("创建用户失败", map[string]interface{}{"error": err.Error()})
+				logger.Error("创建用户失败", map[string]any{"error": err.Error()})
 				return nil, false, errors.New("创建用户失败")
 			}
 			isNewUser = true
 		} else {
-			logger.Error("查询用户失败", map[string]interface{}{"error": err.Error()})
+			logger.Error("查询用户失败", map[string]any{"error": err.Error()})
 			return nil, false, errors.New("登录失败")
 		}
 	} else {
@@ -96,7 +102,7 @@ func (s *userService) LoginWithSMS(req *model.LoginWithSMSRequest, ip, userAgent
 		user.LoginCount++
 
 		if err := s.userRepo.Update(user); err != nil {
-			logger.Error("更新用户登录信息失败", map[string]interface{}{"error": err.Error()})
+			logger.Error("更新用户登录信息失败", map[string]any{"error": err.Error()})
 			// 这里不返回错误，登录依然成功
 		}
 	}
@@ -104,32 +110,32 @@ func (s *userService) LoginWithSMS(req *model.LoginWithSMSRequest, ip, userAgent
 	// 注册/更新设备
 	device, err := s.deviceService.RegisterDevice(user.ID, req.DeviceInfo, ip, userAgent)
 	if err != nil {
-		logger.Error("注册设备失败", map[string]interface{}{"error": err.Error()})
+		logger.Error("注册设备失败", map[string]any{"error": err.Error()})
 		return nil, false, errors.New("设备注册失败")
 	}
 
 	// 创建会话记录
 	session, err := s.deviceService.CreateSession(user.ID, device.DeviceID, "")
 	if err != nil {
-		logger.Error("创建会话失败", map[string]interface{}{"error": err.Error()})
+		logger.Error("创建会话失败", map[string]any{"error": err.Error()})
 		return nil, false, errors.New("创建会话失败")
 	}
 
 	// 生成包含会话信息的JWT Token
 	jwtToken, err := s.jwtService.GenerateToken(user, device, session.SessionToken)
 	if err != nil {
-		logger.Error("生成JWT Token失败", map[string]interface{}{"error": err.Error()})
+		logger.Error("生成JWT Token失败", map[string]any{"error": err.Error()})
 		return nil, false, errors.New("生成Token失败")
 	}
 
 	// 更新会话记录中的JWT Token
 	session.JWTToken = jwtToken
 	if err := s.deviceService.UpdateSession(session); err != nil {
-		logger.Warn("更新会话JWT Token失败", map[string]interface{}{"error": err.Error()})
+		logger.Warn("更新会话JWT Token失败", map[string]any{"error": err.Error()})
 		// 不影响登录流程，只记录警告
 	}
 
-	logger.Info("用户登录成功", map[string]interface{}{
+	logger.Info("用户登录成功", map[string]any{
 		"user_id":     user.ID,
 		"phone":       user.Phone,
 		"device_id":   device.DeviceID,
@@ -144,21 +150,21 @@ func (s *userService) LoginWithSMS(req *model.LoginWithSMSRequest, ip, userAgent
 	}, isNewUser, nil
 }
 
-// GetUserByID 根据ID获取用户
+// GetUserByID 根据ID获取用户.
 func (s *userService) GetUserByID(id uint) (*model.UserResponse, error) {
 	user, err := s.userRepo.GetByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("用户不存在")
 		}
-		logger.Error("获取用户失败", map[string]interface{}{"error": err.Error(), "id": id})
+		logger.Error("获取用户失败", map[string]any{"error": err.Error(), "id": id})
 		return nil, errors.New("获取用户失败")
 	}
 
 	return s.convertToResponse(user), nil
 }
 
-// UpdateUser 更新用户
+// UpdateUser 更新用户.
 func (s *userService) UpdateUser(id uint, req *model.UpdateUserRequest) (*model.UserResponse, error) {
 	user, err := s.userRepo.GetByID(id)
 	if err != nil {
@@ -198,14 +204,14 @@ func (s *userService) UpdateUser(id uint, req *model.UpdateUserRequest) (*model.
 	}
 
 	if err := s.userRepo.Update(user); err != nil {
-		logger.Error("更新用户失败", map[string]interface{}{"error": err.Error(), "id": id})
+		logger.Error("更新用户失败", map[string]any{"error": err.Error(), "id": id})
 		return nil, errors.New("更新用户失败")
 	}
 
 	return s.convertToResponse(user), nil
 }
 
-// DeleteUser 删除用户
+// DeleteUser 删除用户.
 func (s *userService) DeleteUser(id uint) error {
 	if _, err := s.userRepo.GetByID(id); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -215,19 +221,19 @@ func (s *userService) DeleteUser(id uint) error {
 	}
 
 	if err := s.userRepo.Delete(id); err != nil {
-		logger.Error("删除用户失败", map[string]interface{}{"error": err.Error(), "id": id})
+		logger.Error("删除用户失败", map[string]any{"error": err.Error(), "id": id})
 		return errors.New("删除用户失败")
 	}
 
 	return nil
 }
 
-// GetUserList 获取用户列表
+// GetUserList 获取用户列表.
 func (s *userService) GetUserList(page, size int) ([]*model.UserResponse, int64, error) {
 	offset := (page - 1) * size
 	users, total, err := s.userRepo.List(offset, size)
 	if err != nil {
-		logger.Error("获取用户列表失败", map[string]interface{}{"error": err.Error()})
+		logger.Error("获取用户列表失败", map[string]any{"error": err.Error()})
 		return nil, 0, errors.New("获取用户列表失败")
 	}
 
@@ -239,12 +245,12 @@ func (s *userService) GetUserList(page, size int) ([]*model.UserResponse, int64,
 	return responses, total, nil
 }
 
-// SearchUsers 搜索用户
+// SearchUsers 搜索用户.
 func (s *userService) SearchUsers(keyword string, page, size int) ([]*model.UserResponse, int64, error) {
 	offset := (page - 1) * size
 	users, total, err := s.userRepo.Search(keyword, offset, size)
 	if err != nil {
-		logger.Error("搜索用户失败", map[string]interface{}{"error": err.Error(), "keyword": keyword})
+		logger.Error("搜索用户失败", map[string]any{"error": err.Error(), "keyword": keyword})
 		return nil, 0, errors.New("搜索用户失败")
 	}
 
@@ -256,17 +262,17 @@ func (s *userService) SearchUsers(keyword string, page, size int) ([]*model.User
 	return responses, total, nil
 }
 
-// GetUserDevices 获取用户设备列表
+// GetUserDevices 获取用户设备列表.
 func (s *userService) GetUserDevices(userID uint) (*model.UserDevicesResponse, error) {
 	return s.deviceService.GetUserDevices(userID)
 }
 
-// KickDevices 踢出设备
+// KickDevices 踢出设备.
 func (s *userService) KickDevices(userID uint, req *model.KickDeviceRequest) error {
 	return s.deviceService.KickDevices(userID, req.DeviceIDs)
 }
 
-// convertToResponse 转换为响应结构
+// convertToResponse 转换为响应结构.
 func (s *userService) convertToResponse(user *model.User) *model.UserResponse {
 	return &model.UserResponse{
 		ID:          user.ID,

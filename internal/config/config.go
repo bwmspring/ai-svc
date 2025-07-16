@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-// Config 应用配置结构
+// Config 应用配置结构.
 type Config struct {
 	Server   ServerConfig   `mapstructure:"server"`
 	Database DatabaseConfig `mapstructure:"database"`
@@ -15,7 +15,7 @@ type Config struct {
 	JWT      JWTConfig      `mapstructure:"jwt"`
 }
 
-// ServerConfig 服务器配置
+// ServerConfig 服务器配置.
 type ServerConfig struct {
 	Port         string `mapstructure:"port"`
 	Mode         string `mapstructure:"mode"`
@@ -23,7 +23,7 @@ type ServerConfig struct {
 	WriteTimeout int    `mapstructure:"write_timeout"`
 }
 
-// DatabaseConfig 数据库配置
+// DatabaseConfig 数据库配置.
 type DatabaseConfig struct {
 	Host         string `mapstructure:"host"`
 	Port         int    `mapstructure:"port"`
@@ -35,7 +35,7 @@ type DatabaseConfig struct {
 	MaxOpenConns int    `mapstructure:"max_open_conns"`
 }
 
-// LogConfig 日志配置
+// LogConfig 日志配置.
 type LogConfig struct {
 	Level      string `mapstructure:"level"`
 	Format     string `mapstructure:"format"`
@@ -45,7 +45,7 @@ type LogConfig struct {
 	MaxAge     int    `mapstructure:"max_age"`
 }
 
-// JWTConfig JWT配置
+// JWTConfig JWT配置.
 type JWTConfig struct {
 	Secret     string `mapstructure:"secret"`
 	ExpireTime int    `mapstructure:"expire_time"`
@@ -53,7 +53,7 @@ type JWTConfig struct {
 
 var AppConfig *Config
 
-// LoadConfig 加载配置文件
+// LoadConfig 加载配置文件.
 func LoadConfig(configPath string) error {
 	viper.SetConfigFile(configPath)
 	viper.SetConfigType("yaml")
@@ -78,7 +78,7 @@ func LoadConfig(configPath string) error {
 	return nil
 }
 
-// setDefaults 设置默认配置值
+// setDefaults 设置默认配置值.
 func setDefaults() {
 	// 服务器默认配置
 	viper.SetDefault("server.port", "8080")
@@ -106,7 +106,7 @@ func setDefaults() {
 	viper.SetDefault("jwt.expire_time", 3600)
 }
 
-// GetDSN 获取数据库连接字符串
+// GetDSN 获取数据库连接字符串.
 func (c *DatabaseConfig) GetDSN() string {
 	return fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=True&loc=Local",
 		c.Username, c.Password, c.Host, c.Port, c.Database, c.Charset)

@@ -19,6 +19,12 @@ GOCMD := go
 GOBUILD := $(GOCMD) build
 GOTEST := $(GOCMD) test
 GOMOD := $(GOCMD) mod
+GOFMT := $(GOCMD) fmt
+
+# 工具变量
+GOIMPORTS := goimports
+GOLINES := golines
+GOLANGCI_LINT := golangci-lint
 
 # ldflags 用于在编译时注入版本信息
 LDFLAGS := -ldflags "-X 'ai-svc/cmd.Version=$(VERSION)' \
@@ -27,7 +33,7 @@ LDFLAGS := -ldflags "-X 'ai-svc/cmd.Version=$(VERSION)' \
 
 # 默认目标
 .PHONY: all
-all: clean deps test build
+all: clean deps format test build
 
 # 构建应用程序
 .PHONY: build
@@ -56,6 +62,81 @@ dev:
 test:
 	@echo "🧪 运行测试..."
 	$(GOTEST) -v -race -coverprofile=coverage.out ./...
+
+# 生成测试覆盖率报告
+.PHONY: coverage
+coverage: test
+	@echo "📊 生成覆盖率报告..."
+	$(GOCMD) tool cover -html=coverage.out -o coverage.html
+	@echo "覆盖率报告已生成：coverage.html"
+
+# 代码格式化
+.PHONY: fmt
+fmt:
+	@echo "🎨 格式化代码..."
+	$(GOFMT) ./...
+
+# Import 排序和格式化
+.PHONY: imports
+imports:
+	@echo "📦 排序和格式化 imports..."
+	@command -v $(GOIMPORTS) >/dev/null 2>&1 || { \
+		echo "安装 goimports..."; \
+		$(GOCMD) install golang.org/x/tools/cmd/goimports@latest; \
+	}
+	$(GOIMPORTS) -w -local ai-svc .
+
+# 控制代码行长度
+.PHONY: lines
+lines:
+	@echo "📏 控制代码行长度..."
+	@command -v $(GOLINES) >/dev/null 2>&1 || { \
+		echo "安装 golines..."; \
+		$(GOCMD) install github.com/segmentio/golines@latest; \
+	}
+	$(GOLINES) -w -m 120 --base-formatter=gofumpt .
+
+# 代码检查和 lint
+.PHONY: lint
+lint:
+	@echo "🔍 运行代码检查..."
+	@command -v $(GOLANGCI_LINT) >/dev/null 2>&1 || { \
+		echo "安装 golangci-lint..."; \
+		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin latest; \
+	}
+	$(GOLANGCI_LINT) run ./...
+
+# 修复可自动修复的 lint 问题
+.PHONY: lint-fix
+lint-fix:
+	@echo "🔧 修复 lint 问题..."
+	@command -v $(GOLANGCI_LINT) >/dev/null 2>&1 || { \
+		echo "安装 golangci-lint..."; \
+		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin latest; \
+	}
+	$(GOLANGCI_LINT) run --fix ./...
+
+# 全面格式化（包含所有格式化操作）
+.PHONY: format
+format: fmt imports lines lint-fix
+	@echo "🎯 代码格式化完成！"
+
+# 代码质量检查（格式化 + 测试 + lint）
+.PHONY: check
+check: format test lint
+	@echo "✅ 代码质量检查完成！"
+
+# 安装开发工具
+.PHONY: install-tools
+install-tools:
+	@echo "🛠️  安装开发工具..."
+	$(GOCMD) install golang.org/x/tools/cmd/goimports@latest
+	$(GOCMD) install github.com/segmentio/golines@latest
+	@command -v $(GOLANGCI_LINT) >/dev/null 2>&1 || { \
+		echo "安装 golangci-lint..."; \
+		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin latest; \
+	}
+	@echo "所有开发工具安装完成！"
 
 # 依赖管理
 .PHONY: deps
@@ -86,8 +167,19 @@ help:
 	@echo ""
 	@echo "测试相关："
 	@echo "  test           运行测试"
+	@echo "  coverage       生成测试覆盖率报告"
 	@echo ""
-	@echo "依赖管理："
+	@echo "代码质量："
+	@echo "  fmt            格式化代码"
+	@echo "  imports        排序和格式化 imports"
+	@echo "  lines          控制代码行长度（最大120字符）"
+	@echo "  lint           运行代码检查"
+	@echo "  lint-fix       修复可自动修复的 lint 问题"
+	@echo "  format         全面格式化（fmt + imports + lines + lint-fix）"
+	@echo "  check          代码质量检查（format + test + lint）"
+	@echo ""
+	@echo "工具管理："
+	@echo "  install-tools  安装开发工具"
 	@echo "  deps           更新依赖"
 	@echo ""
 	@echo "其他："
