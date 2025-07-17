@@ -1,9 +1,11 @@
 package middleware
 
 import (
-	"ai-svc/pkg/response"
 	"sync"
 	"time"
+
+	"ai-svc/internal/config"
+	"ai-svc/pkg/response"
 
 	"github.com/gin-gonic/gin"
 )
@@ -176,13 +178,60 @@ func CustomRateLimit(limiter *RateLimiter, config ...RateLimitConfig) gin.Handle
 	}
 }
 
-// SMSRateLimit SMS发送频率限制中间件（保持向后兼容）.
-func SMSRateLimit(limiter *RateLimiter) gin.HandlerFunc {
-	smsConfig := RateLimitConfig{
-		Capacity:       1,
-		RefillRate:     1,
-		RefillInterval: time.Minute, // 每分钟补充1个令牌
-		ErrorMsg:       "发送过于频繁，请稍后再试",
+// GetConfigRateLimit 从配置文件获取限流配置.
+func GetConfigRateLimit(configType string) RateLimitConfig {
+	var rateLimitConfig config.RateLimitItemConfig
+	var errorMsg string
+
+	switch configType {
+	case "sms":
+		rateLimitConfig = config.AppConfig.RateLimit.SMS
+		errorMsg = rateLimitConfig.ErrorMessage
+		if errorMsg == "" {
+			errorMsg = "短信发送过于频繁，请稍后再试"
+		}
+	case "api":
+		rateLimitConfig = config.AppConfig.RateLimit.API
+		errorMsg = rateLimitConfig.ErrorMessage
+		if errorMsg == "" {
+			errorMsg = "请求过于频繁，请稍后再试"
+		}
+	case "login":
+		rateLimitConfig = config.AppConfig.RateLimit.Login
+		errorMsg = rateLimitConfig.ErrorMessage
+		if errorMsg == "" {
+			errorMsg = "登录尝试过于频繁，请稍后再试"
+		}
+	default:
+		// 默认配置
+		return DefaultRateLimitConfig
 	}
-	return CustomRateLimit(limiter, smsConfig)
+
+	return RateLimitConfig{
+		Capacity:       rateLimitConfig.Capacity,
+		RefillRate:     rateLimitConfig.RefillRate,
+		RefillInterval: rateLimitConfig.RefillInterval,
+		ErrorMsg:       errorMsg,
+	}
+}
+
+// ConfigRateLimit 使用配置文件的限流中间件.
+func ConfigRateLimit(limiter *RateLimiter, configType string) gin.HandlerFunc {
+	cfg := GetConfigRateLimit(configType)
+	return CustomRateLimit(limiter, cfg)
+}
+
+// SMSRateLimit SMS发送频率限制中间件（使用配置文件）.
+func SMSRateLimit(limiter *RateLimiter) gin.HandlerFunc {
+	return ConfigRateLimit(limiter, "sms")
+}
+
+// APIRateLimit API访问频率限制中间件（使用配置文件）.
+func APIRateLimit(limiter *RateLimiter) gin.HandlerFunc {
+	return ConfigRateLimit(limiter, "api")
+}
+
+// LoginRateLimit 登录频率限制中间件（使用配置文件）.
+func LoginRateLimit(limiter *RateLimiter) gin.HandlerFunc {
+	return ConfigRateLimit(limiter, "login")
 }

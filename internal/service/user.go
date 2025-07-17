@@ -1,11 +1,12 @@
 package service
 
 import (
+	"errors"
+	"time"
+
 	"ai-svc/internal/model"
 	"ai-svc/internal/repository"
 	"ai-svc/pkg/logger"
-	"errors"
-	"time"
 
 	"gorm.io/gorm"
 )
@@ -14,6 +15,7 @@ import (
 type UserService interface {
 	// 认证相关
 	LoginWithSMS(req *model.LoginWithSMSRequest, ip, userAgent string) (*model.LoginResponse, bool, error)
+	RefreshToken(refreshToken string) (*model.TokenPair, error) // 新增Token刷新方法
 
 	// 用户管理
 	GetUserByID(id uint) (*model.UserResponse, error)
@@ -45,11 +47,11 @@ func NewUserService(
 		userRepo:      userRepo,
 		smsService:    smsService,
 		deviceService: deviceService,
-		jwtService:    NewJWTService(),
+		jwtService:    NewJWTServiceWithDeviceService(deviceService),
 	}
 }
 
-// LoginWithSMS 手机号+验证码登录（同时完成注册）.
+// LoginWithSMS 手机号+验证码登录（同时完成注册)
 func (s *userService) LoginWithSMS(
 	req *model.LoginWithSMSRequest,
 	ip, userAgent string,
@@ -107,32 +109,25 @@ func (s *userService) LoginWithSMS(
 		}
 	}
 
-	// 注册/更新设备
-	device, err := s.deviceService.RegisterDevice(user.ID, req.DeviceInfo, ip, userAgent)
+	// 处理设备登录
+	device, err := s.deviceService.HandleDeviceLogin(user.ID, req.DeviceInfo, ip, userAgent)
 	if err != nil {
-		logger.Error("注册设备失败", map[string]any{"error": err.Error()})
-		return nil, false, errors.New("设备注册失败")
+		logger.Error("设备登录失败", map[string]any{"error": err.Error()})
+		return nil, false, errors.New("设备登录失败")
 	}
 
-	// 创建会话记录
-	session, err := s.deviceService.CreateSession(user.ID, device.DeviceID, "")
+	// 生成包含设备信息的JWT Token
+	accessToken, err := s.jwtService.GenerateToken(user, device, device.DeviceID) // 使用deviceID作为唯一标识
 	if err != nil {
-		logger.Error("创建会话失败", map[string]any{"error": err.Error()})
-		return nil, false, errors.New("创建会话失败")
+		logger.Error("生成Access Token失败", map[string]any{"error": err.Error()})
+		return nil, false, errors.New("生成Access Token失败")
 	}
 
-	// 生成包含会话信息的JWT Token
-	jwtToken, err := s.jwtService.GenerateToken(user, device, session.SessionToken)
+	// 生成刷新令牌
+	refreshToken, err := s.jwtService.GenerateRefreshToken(user, device)
 	if err != nil {
-		logger.Error("生成JWT Token失败", map[string]any{"error": err.Error()})
-		return nil, false, errors.New("生成Token失败")
-	}
-
-	// 更新会话记录中的JWT Token
-	session.JWTToken = jwtToken
-	if err := s.deviceService.UpdateSession(session); err != nil {
-		logger.Warn("更新会话JWT Token失败", map[string]any{"error": err.Error()})
-		// 不影响登录流程，只记录警告
+		logger.Error("生成Refresh Token失败", map[string]any{"error": err.Error()})
+		return nil, false, errors.New("生成Refresh Token失败")
 	}
 
 	logger.Info("用户登录成功", map[string]any{
@@ -141,13 +136,20 @@ func (s *userService) LoginWithSMS(
 		"device_id":   device.DeviceID,
 		"device_type": device.DeviceType,
 		"is_new_user": isNewUser,
-		"session_id":  session.ID,
 	})
 
 	return &model.LoginResponse{
-		User:  s.convertToResponse(user),
-		Token: jwtToken,
+		User:         s.convertToResponse(user),
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		ExpiresIn:    24 * 3600, // 24小时，单位秒
+		TokenType:    "Bearer",
 	}, isNewUser, nil
+}
+
+// RefreshToken 刷新Token（通过JWT服务）.
+func (s *userService) RefreshToken(refreshToken string) (*model.TokenPair, error) {
+	return s.jwtService.RefreshToken(refreshToken)
 }
 
 // GetUserByID 根据ID获取用户.
@@ -264,7 +266,35 @@ func (s *userService) SearchUsers(keyword string, page, size int) ([]*model.User
 
 // GetUserDevices 获取用户设备列表.
 func (s *userService) GetUserDevices(userID uint) (*model.UserDevicesResponse, error) {
-	return s.deviceService.GetUserDevices(userID)
+	deviceList, err := s.deviceService.GetUserDevices(userID, "")
+	if err != nil {
+		return nil, err
+	}
+
+	// 转换为旧的响应格式以保持兼容性
+	deviceResponses := make([]*model.DeviceResponse, len(deviceList.Devices))
+	for i, device := range deviceList.Devices {
+		deviceResponses[i] = &model.DeviceResponse{
+			ID:           device.ID,
+			DeviceID:     device.DeviceID,
+			DeviceType:   device.DeviceType,
+			DeviceName:   device.DeviceName,
+			AppVersion:   device.AppVersion,
+			OSVersion:    device.OSVersion,
+			ClientIP:     device.ClientIP,
+			LoginAt:      device.LoginAt,
+			LastActiveAt: device.LastActiveAt,
+			IsOnline:     device.IsOnline,
+			CreatedAt:    device.LoginAt, // 使用LoginAt作为CreatedAt的替代
+		}
+	}
+
+	return &model.UserDevicesResponse{
+		Devices:     deviceResponses,
+		TotalCount:  deviceList.Summary.Total,
+		OnlineCount: deviceList.Summary.Online,
+		MaxDevices:  deviceList.Limits.Mobile + deviceList.Limits.PC + deviceList.Limits.Web + deviceList.Limits.Miniprogram,
+	}, nil
 }
 
 // KickDevices 踢出设备.
@@ -274,24 +304,32 @@ func (s *userService) KickDevices(userID uint, req *model.KickDeviceRequest) err
 
 // convertToResponse 转换为响应结构.
 func (s *userService) convertToResponse(user *model.User) *model.UserResponse {
+	// 辅助函数：将字符串转为字符串指针
+	toStringPtr := func(s string) *string {
+		if s == "" {
+			return nil
+		}
+		return &s
+	}
+
 	return &model.UserResponse{
 		ID:          user.ID,
 		Phone:       user.Phone,
-		Username:    user.Username,
-		Email:       user.Email,
-		Nickname:    user.Nickname,
-		Avatar:      user.Avatar,
-		RealName:    user.RealName,
+		Username:    toStringPtr(user.Username),
+		Email:       toStringPtr(user.Email),
+		Nickname:    toStringPtr(user.Nickname),
+		Avatar:      toStringPtr(user.Avatar),
+		RealName:    toStringPtr(user.RealName),
 		Gender:      user.Gender,
 		VIPLevel:    user.VIPLevel,
 		VIPExpireAt: user.VIPExpireAt,
 		Status:      user.Status,
-		LastLoginIP: user.LastLoginIP,
+		LastLoginIP: toStringPtr(user.LastLoginIP),
 		LastLoginAt: user.LastLoginAt,
 		LoginCount:  user.LoginCount,
 		Birthday:    user.Birthday,
-		Address:     user.Address,
-		Bio:         user.Bio,
+		Address:     toStringPtr(user.Address),
+		Bio:         toStringPtr(user.Bio),
 		CreatedAt:   user.CreatedAt,
 		UpdatedAt:   user.UpdatedAt,
 	}

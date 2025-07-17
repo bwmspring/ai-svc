@@ -1,10 +1,11 @@
 package cmd
 
 import (
-	"ai-svc/internal/config"
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"ai-svc/internal/config"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -122,15 +123,15 @@ func showConfig() error {
 	}
 
 	fmt.Println("\n=== 服务器配置 ===")
-	fmt.Printf("端口: %s\n", config.AppConfig.Server.Port)
+	fmt.Printf("端口: %d\n", config.AppConfig.Server.Port)
 	fmt.Printf("模式: %s\n", config.AppConfig.Server.Mode)
-	fmt.Printf("读取超时: %d 秒\n", config.AppConfig.Server.ReadTimeout)
-	fmt.Printf("写入超时: %d 秒\n", config.AppConfig.Server.WriteTimeout)
+	fmt.Printf("读取超时: %s\n", config.AppConfig.Server.ReadTimeout)
+	fmt.Printf("写入超时: %s\n", config.AppConfig.Server.WriteTimeout)
 
 	fmt.Println("\n=== 日志配置 ===")
-	fmt.Printf("级别: %s\n", config.AppConfig.Log.Level)
-	fmt.Printf("格式: %s\n", config.AppConfig.Log.Format)
-	fmt.Printf("输出: %s\n", config.AppConfig.Log.Output)
+	fmt.Printf("级别: %s\n", config.AppConfig.Logger.Level)
+	fmt.Printf("格式: %s\n", config.AppConfig.Logger.Format)
+	fmt.Printf("输出: %s\n", config.AppConfig.Logger.Output)
 
 	// 显示环境变量覆盖信息
 	fmt.Println("\n=== 环境变量 ===")
@@ -185,8 +186,8 @@ func validateConfig() error {
 	// 验证必需的配置项
 	validationErrors := []string{}
 
-	if config.AppConfig.Server.Port == "" {
-		validationErrors = append(validationErrors, "server.port 不能为空")
+	if config.AppConfig.Server.Port <= 0 {
+		validationErrors = append(validationErrors, "server.port 必须是正整数")
 	}
 
 	if config.AppConfig.Server.Mode == "" {
@@ -197,8 +198,8 @@ func validateConfig() error {
 		validationErrors = append(validationErrors, "server.mode 必须是 debug、release 或 test")
 	}
 
-	if config.AppConfig.Log.Level == "" {
-		validationErrors = append(validationErrors, "log.level 不能为空")
+	if config.AppConfig.Logger.Level == "" {
+		validationErrors = append(validationErrors, "logger.level 不能为空")
 	}
 
 	// 显示验证结果

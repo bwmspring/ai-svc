@@ -1,9 +1,10 @@
 package repository
 
 import (
+	"time"
+
 	"ai-svc/internal/model"
 	"ai-svc/pkg/database"
-	"time"
 
 	"gorm.io/gorm"
 )

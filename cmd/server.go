@@ -1,16 +1,18 @@
 package cmd
 
 import (
-	"ai-svc/internal/config"
-	"ai-svc/internal/routes"
-	"ai-svc/pkg/logger"
 	"context"
 	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
+
+	"ai-svc/internal/config"
+	"ai-svc/internal/routes"
+	"ai-svc/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
@@ -143,9 +145,9 @@ func loadConfiguration() error {
 // initializeLogger 初始化日志系统.
 func initializeLogger() error {
 	// 从配置中读取日志相关参数
-	logLevel := config.AppConfig.Log.Level
-	logFormat := config.AppConfig.Log.Format
-	logOutput := config.AppConfig.Log.Output
+	logLevel := config.AppConfig.Logger.Level
+	logFormat := config.AppConfig.Logger.Format
+	logOutput := config.AppConfig.Logger.Output
 
 	// 如果启用了详细模式，强制设置为 debug 级别
 	if verbose {
@@ -170,10 +172,17 @@ func initializeLogger() error {
 func applyCommandLineOverrides() {
 	// 如果命令行指定了端口，覆盖配置文件中的端口设置
 	if serverPort != "" {
-		config.AppConfig.Server.Port = serverPort
-		logger.Info("端口被命令行参数覆盖", map[string]any{
-			"port": serverPort,
-		})
+		if port, err := strconv.Atoi(serverPort); err == nil {
+			config.AppConfig.Server.Port = port
+			logger.Info("端口被命令行参数覆盖", map[string]any{
+				"port": port,
+			})
+		} else {
+			logger.Warn("无效的端口号，使用配置文件中的端口", map[string]any{
+				"invalid_port": serverPort,
+				"config_port":  config.AppConfig.Server.Port,
+			})
+		}
 	}
 
 	// 如果命令行指定了运行模式，覆盖配置文件中的模式设置
@@ -204,10 +213,10 @@ func setupGinMode() {
 // configureHTTPServer 配置 HTTP 服务器参数.
 func configureHTTPServer(router *gin.Engine) *http.Server {
 	server := &http.Server{
-		Addr:         ":" + config.AppConfig.Server.Port,
+		Addr:         fmt.Sprintf(":%d", config.AppConfig.Server.Port),
 		Handler:      router,
-		ReadTimeout:  time.Duration(config.AppConfig.Server.ReadTimeout) * time.Second,
-		WriteTimeout: time.Duration(config.AppConfig.Server.WriteTimeout) * time.Second,
+		ReadTimeout:  config.AppConfig.Server.ReadTimeout,
+		WriteTimeout: config.AppConfig.Server.WriteTimeout,
 		// 设置最大请求头大小（1MB）
 		MaxHeaderBytes: 1 << 20,
 	}
@@ -224,10 +233,10 @@ func configureHTTPServer(router *gin.Engine) *http.Server {
 // startServer 异步启动 HTTP 服务器.
 func startServer(server *http.Server) {
 	go func() {
-		fmt.Printf("🌟 服务器启动成功，监听端口: %s\n", config.AppConfig.Server.Port)
+		fmt.Printf("🌟 服务器启动成功，监听端口: %d\n", config.AppConfig.Server.Port)
 		fmt.Printf("📊 运行模式: %s\n", config.AppConfig.Server.Mode)
-		fmt.Printf("🔗 访问地址: http://localhost:%s\n", config.AppConfig.Server.Port)
-		fmt.Printf("💚 健康检查: http://localhost:%s/health\n", config.AppConfig.Server.Port)
+		fmt.Printf("🔗 访问地址: http://localhost:%d\n", config.AppConfig.Server.Port)
+		fmt.Printf("💚 健康检查: http://localhost:%d/health\n", config.AppConfig.Server.Port)
 
 		logger.Info("服务器启动", map[string]any{
 			"port":    config.AppConfig.Server.Port,

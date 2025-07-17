@@ -1,10 +1,11 @@
 package service
 
 import (
+	"testing"
+
 	"ai-svc/internal/config"
 	"ai-svc/internal/model"
 	"ai-svc/pkg/logger"
-	"testing"
 )
 
 // TestJWTService 测试JWT服务.

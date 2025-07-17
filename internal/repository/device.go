@@ -1,9 +1,10 @@
 package repository
 
 import (
+	"time"
+
 	"ai-svc/internal/model"
 	"ai-svc/pkg/database"
-	"time"
 
 	"gorm.io/gorm"
 )
@@ -14,6 +15,7 @@ type DeviceRepository interface {
 	CreateDevice(device *model.UserDevice) error
 	GetDeviceByID(id uint) (*model.UserDevice, error)
 	GetDeviceByDeviceID(deviceID string) (*model.UserDevice, error)
+	GetDeviceByFingerprint(fingerprint string) (*model.UserDevice, error)
 	GetUserDevices(userID uint) ([]*model.UserDevice, error)
 	GetUserOnlineDevices(userID uint) ([]*model.UserDevice, error)
 	UpdateDevice(device *model.UserDevice) error
@@ -21,16 +23,6 @@ type DeviceRepository interface {
 	DeleteDeviceByDeviceID(deviceID string) error
 	CountUserDevices(userID uint) (int64, error)
 	CountUserOnlineDevices(userID uint) (int64, error)
-
-	// 会话管理
-	CreateSession(session *model.UserSession) error
-	GetSessionByToken(token string) (*model.UserSession, error)
-	GetUserSessions(userID uint) ([]*model.UserSession, error)
-	UpdateSession(session *model.UserSession) error
-	DeleteSession(token string) error
-	DeleteUserSessions(userID uint) error
-	DeleteDeviceSessions(deviceID string) error
-	CleanExpiredSessions() error
 
 	// 设备在线状态管理
 	UpdateDeviceActivity(deviceID string) error
@@ -69,6 +61,16 @@ func (r *deviceRepository) GetDeviceByID(id uint) (*model.UserDevice, error) {
 func (r *deviceRepository) GetDeviceByDeviceID(deviceID string) (*model.UserDevice, error) {
 	var device model.UserDevice
 	err := r.db.Where("device_id = ?", deviceID).First(&device).Error
+	if err != nil {
+		return nil, err
+	}
+	return &device, nil
+}
+
+// GetDeviceByFingerprint 根据设备指纹获取设备.
+func (r *deviceRepository) GetDeviceByFingerprint(fingerprint string) (*model.UserDevice, error) {
+	var device model.UserDevice
+	err := r.db.Where("device_fingerprint = ?", fingerprint).First(&device).Error
 	if err != nil {
 		return nil, err
 	}
@@ -123,73 +125,27 @@ func (r *deviceRepository) CountUserOnlineDevices(userID uint) (int64, error) {
 	return count, err
 }
 
-// CreateSession 创建会话.
-func (r *deviceRepository) CreateSession(session *model.UserSession) error {
-	return r.db.Create(session).Error
-}
-
-// GetSessionByToken 根据Token获取会话.
-func (r *deviceRepository) GetSessionByToken(token string) (*model.UserSession, error) {
-	var session model.UserSession
-	err := r.db.Where("session_token = ?", token).First(&session).Error
-	if err != nil {
-		return nil, err
-	}
-	return &session, nil
-}
-
-// GetUserSessions 获取用户所有会话.
-func (r *deviceRepository) GetUserSessions(userID uint) ([]*model.UserSession, error) {
-	var sessions []*model.UserSession
-	err := r.db.Where("user_id = ?", userID).Find(&sessions).Error
-	return sessions, err
-}
-
-// UpdateSession 更新会话.
-func (r *deviceRepository) UpdateSession(session *model.UserSession) error {
-	return r.db.Save(session).Error
-}
-
-// DeleteSession 删除会话.
-func (r *deviceRepository) DeleteSession(token string) error {
-	return r.db.Where("session_token = ?", token).Delete(&model.UserSession{}).Error
-}
-
-// DeleteUserSessions 删除用户所有会话.
-func (r *deviceRepository) DeleteUserSessions(userID uint) error {
-	return r.db.Where("user_id = ?", userID).Delete(&model.UserSession{}).Error
-}
-
-// DeleteDeviceSessions 删除设备的所有会话.
-func (r *deviceRepository) DeleteDeviceSessions(deviceID string) error {
-	return r.db.Where("device_id = ?", deviceID).Delete(&model.UserSession{}).Error
-}
-
-// CleanExpiredSessions 清理过期会话.
-func (r *deviceRepository) CleanExpiredSessions() error {
-	return r.db.Where("expires_at < ?", time.Now()).Delete(&model.UserSession{}).Error
-}
-
 // UpdateDeviceActivity 更新设备活跃时间.
 func (r *deviceRepository) UpdateDeviceActivity(deviceID string) error {
-	return r.db.Model(&model.UserDevice{}).Where("device_id = ?", deviceID).
-		Updates(map[string]any{
+	return r.db.Model(&model.UserDevice{}).
+		Where("device_id = ?", deviceID).
+		Updates(map[string]interface{}{
 			"last_active_at": time.Now(),
-			"status":         1,
+			"status":         1, // 设置为在线
 		}).Error
 }
 
-// MarkDeviceOffline 标记设备离线.
+// MarkDeviceOffline 将设备标记为离线.
 func (r *deviceRepository) MarkDeviceOffline(deviceID string) error {
-	return r.db.Model(&model.UserDevice{}).Where("device_id = ?", deviceID).
+	return r.db.Model(&model.UserDevice{}).
+		Where("device_id = ?", deviceID).
 		Update("status", 0).Error
 }
 
-// CleanOfflineDevices 清理离线设备.
+// CleanOfflineDevices 清理长时间离线的设备.
 func (r *deviceRepository) CleanOfflineDevices() error {
-	// 30分钟没有活动的设备标记为离线
-	thirtyMinutesAgo := time.Now().Add(-30 * time.Minute)
-	return r.db.Model(&model.UserDevice{}).
-		Where("last_active_at < ? AND status = 1", thirtyMinutesAgo).
-		Update("status", 0).Error
+	// 删除30天前最后活跃的设备
+	thirtyDaysAgo := time.Now().Add(-30 * 24 * time.Hour)
+	return r.db.Where("last_active_at < ? AND status = 0", thirtyDaysAgo).
+		Delete(&model.UserDevice{}).Error
 }

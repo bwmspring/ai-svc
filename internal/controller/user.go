@@ -1,11 +1,12 @@
 package controller
 
 import (
+	"strconv"
+
 	"ai-svc/internal/middleware"
 	"ai-svc/internal/model"
 	"ai-svc/internal/service"
 	"ai-svc/pkg/response"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -231,4 +232,28 @@ func (ctrl *UserController) KickDevices(c *gin.Context) {
 	}
 
 	response.SuccessWithMessage(c, "设备已被踢出", nil)
+}
+
+// RefreshToken 刷新Token.
+func (ctrl *UserController) RefreshToken(c *gin.Context) {
+	var req model.RefreshTokenRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, response.INVALID_PARAMS, "参数错误: "+err.Error())
+		return
+	}
+
+	// 参数验证
+	if err := ctrl.validator.Struct(&req); err != nil {
+		response.Error(c, response.INVALID_PARAMS, "参数验证失败: "+err.Error())
+		return
+	}
+
+	// 通过用户服务刷新token（包含设备验证）
+	tokenPair, err := ctrl.userService.RefreshToken(req.RefreshToken)
+	if err != nil {
+		response.Error(c, response.UNAUTHORIZED, err.Error())
+		return
+	}
+
+	response.SuccessWithMessage(c, "Token刷新成功", tokenPair)
 }

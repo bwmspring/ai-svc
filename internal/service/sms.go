@@ -1,13 +1,14 @@
 package service
 
 import (
-	"ai-svc/internal/model"
-	"ai-svc/internal/repository"
-	"ai-svc/pkg/logger"
 	"crypto/rand"
 	"errors"
 	"math/big"
 	"time"
+
+	"ai-svc/internal/model"
+	"ai-svc/internal/repository"
+	"ai-svc/pkg/logger"
 
 	"gorm.io/gorm"
 )

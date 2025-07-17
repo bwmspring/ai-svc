@@ -1,27 +1,283 @@
-server:
-  port: "8080"
-  mode: "debug" # debug, release, test
-  read_timeout: 60
-  write_timeout: 60
+# AI 服务配置文件
+# 包含数据库、Redis、JWT、短信、限流等配置
 
+# 服务器配置
+server:
+  host: "0.0.0.0"
+  port: 8080
+  mode: "debug"  # debug, release, test
+  read_timeout: 60s
+  write_timeout: 60s
+  max_header_bytes: 1048576  # 1MB
+
+# 数据库配置
 database:
   host: "localhost"
   port: 3306
   username: "root"
-  password: "password"
+  password: "123456"
   database: "ai_svc"
   charset: "utf8mb4"
+  parse_time: true
+  loc: "Local"
   max_idle_conns: 10
   max_open_conns: 100
+  conn_max_lifetime: 3600  # 秒
 
-log:
-  level: "info" # debug, info, warn, error
-  format: "json" # json, text
-  output: "stdout" # stdout, file
-  max_size: 100 # MB
-  max_backups: 3
-  max_age: 7 # days
+# Redis 配置
+redis:
+  host: "localhost"
+  port: 6379
+  password: ""
+  db: 0
+  pool_size: 10
+  min_idle_conns: 5
 
+# JWT 配置
 jwt:
-  secret: "your-jwt-secret-key-change-this-in-production"
-  expire_time: 3600 # seconds
+  secret: "your-secret-key-here-change-in-production"
+  expire_hours: 24
+  refresh_expire_hours: 168  # 7天
+
+# 短信配置
+sms:
+  provider: "aliyun"  # aliyun, tencent, custom
+  aliyun:
+    access_key_id: "your-access-key-id"
+    access_key_secret: "your-access-key-secret"
+    sign_name: "your-sign-name"
+    template_code: "SMS_123456789"
+  tencent:
+    secret_id: "your-secret-id"
+    secret_key: "your-secret-key"
+    app_id: "your-app-id"
+    sign: "your-sign"
+    template_id: "123456"
+
+# 限流配置
+rate_limit:
+  # 短信限流
+  sms:
+    capacity: 1
+    refill_rate: 1
+    refill_interval: "60s"
+    error_message: "短信发送过于频繁，请稍后再试"
+  
+  # API限流
+  api:
+    capacity: 100
+    refill_rate: 10
+    refill_interval: "1s"
+    error_message: "请求过于频繁，请稍后再试"
+  
+  # 登录限流
+  login:
+    capacity: 5
+    refill_rate: 1
+    refill_interval: "300s"  # 5分钟
+    error_message: "登录尝试过于频繁，请5分钟后再试"
+
+# 日志配置
+logger:
+  level: "info"    # debug, info, warn, error
+  format: "json"   # json, text
+  output: "stdout" # stdout, file
+
+# 设备管理配置
+device:
+  # 设备数量限制（按设备类型分别限制）
+  limits:
+    mobile_devices: 10        # 移动端设备数量限制（ios + android）
+    pc_devices: 3            # PC端设备数量限制
+    miniprogram_devices: 5   # 小程序设备数量限制
+    web_devices: 3           # Web端设备数量限制
+  
+  # 设备活跃管理
+  activity:
+    online_timeout_minutes: 30    # 设备在线超时时间（分钟）
+    cleanup_interval_hours: 1     # 清理离线设备间隔（小时）
+  
+  # 踢出策略
+  kickout:
+    enabled: true                 # 是否启用自动踢出
+    strategy: "oldest"           # 踢出策略：oldest(最旧), inactive(不活跃)
+    
+  # Redis缓存配置
+  cache:
+    enabled: true                # 是否启用Redis缓存
+    key_prefix: "device:"        # Redis key前缀
+    expire_hours: 24             # 缓存过期时间
+
+# AI 服务配置
+ai:
+  # 默认提供商
+  default_provider: "openai"
+  
+  # 请求超时时间
+  timeout: 30s
+  
+  # 最大重试次数
+  max_retries: 3
+  
+  # 提供商配置
+  providers:
+    # OpenAI 配置
+    openai:
+      enabled: true
+      name: "OpenAI"
+      base_url: "https://api.openai.com/v1"
+      api_key: "your-openai-api-key"
+      organization: ""  # 可选
+      models:
+        - name: "gpt-3.5-turbo"
+          max_tokens: 4096
+          temperature: 0.7
+          pricing:
+            input: 0.0015   # 每1K tokens价格 USD
+            output: 0.002
+        - name: "gpt-4"
+          max_tokens: 8192
+          temperature: 0.7
+          pricing:
+            input: 0.03
+            output: 0.06
+        - name: "gpt-4-turbo"
+          max_tokens: 128000
+          temperature: 0.7
+          pricing:
+            input: 0.01
+            output: 0.03
+    
+    # Anthropic Claude 配置
+    claude:
+      enabled: true
+      name: "Anthropic Claude"
+      base_url: "https://api.anthropic.com"
+      api_key: "your-claude-api-key"
+      version: "2023-06-01"
+      models:
+        - name: "claude-3-haiku-20240307"
+          max_tokens: 200000
+          temperature: 0.7
+          pricing:
+            input: 0.00025
+            output: 0.00125
+        - name: "claude-3-sonnet-20240229"
+          max_tokens: 200000
+          temperature: 0.7
+          pricing:
+            input: 0.003
+            output: 0.015
+        - name: "claude-3-opus-20240229"
+          max_tokens: 200000
+          temperature: 0.7
+          pricing:
+            input: 0.015
+            output: 0.075
+    
+    # 百度文心一言配置
+    baidu:
+      enabled: true
+      name: "百度文心一言"
+      base_url: "https://aip.baidubce.com"
+      api_key: "your-baidu-api-key"
+      secret_key: "your-baidu-secret-key"
+      models:
+        - name: "ernie-bot-turbo"
+          max_tokens: 8192
+          temperature: 0.7
+          pricing:
+            input: 0.008   # 每1K tokens价格 RMB
+            output: 0.008
+        - name: "ernie-bot"
+          max_tokens: 8192
+          temperature: 0.7
+          pricing:
+            input: 0.012
+            output: 0.012
+        - name: "ernie-bot-4"
+          max_tokens: 8192
+          temperature: 0.7
+          pricing:
+            input: 0.12
+            output: 0.12
+    
+    # 阿里通义千问配置
+    alibaba:
+      enabled: true
+      name: "阿里通义千问"
+      base_url: "https://dashscope.aliyuncs.com"
+      api_key: "your-alibaba-api-key"
+      models:
+        - name: "qwen-turbo"
+          max_tokens: 8192
+          temperature: 0.7
+          pricing:
+            input: 0.008   # 每1K tokens价格 RMB
+            output: 0.008
+        - name: "qwen-plus"
+          max_tokens: 32768
+          temperature: 0.7
+          pricing:
+            input: 0.004
+            output: 0.004
+        - name: "qwen-max"
+          max_tokens: 8192
+          temperature: 0.7
+          pricing:
+            input: 0.02
+            output: 0.02
+    
+    # 腾讯混元配置
+    tencent:
+      enabled: false
+      name: "腾讯混元"
+      base_url: "https://hunyuan.tencentcloudapi.com"
+      secret_id: "your-tencent-secret-id"
+      secret_key: "your-tencent-secret-key"
+      region: "ap-beijing"
+      models:
+        - name: "hunyuan-lite"
+          max_tokens: 4096
+          temperature: 0.7
+          pricing:
+            input: 0.005   # 每1K tokens价格 RMB
+            output: 0.005
+        - name: "hunyuan-standard"
+          max_tokens: 4096
+          temperature: 0.7
+          pricing:
+            input: 0.01
+            output: 0.01
+        - name: "hunyuan-pro"
+          max_tokens: 4096
+          temperature: 0.7
+          pricing:
+            input: 0.03
+            output: 0.03
+  
+  # 功能配置
+  features:
+    # 流式响应
+    streaming: true
+    
+    # 对话历史
+    history:
+      enabled: true
+      max_messages: 20    # 最大保留消息数
+      max_tokens: 8000    # 最大token数
+    
+    # 内容过滤
+    content_filter:
+      enabled: true
+      keywords: ["敏感词1", "敏感词2"]  # 敏感词列表
+    
+    # 使用统计
+    usage_tracking:
+      enabled: true
+      save_conversations: true
+    
+    # 缓存配置
+    cache:
+      enabled: true
+      ttl: 3600  # 缓存时间（秒）

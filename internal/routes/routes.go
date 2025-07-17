@@ -1,6 +1,8 @@
 package routes
 
 import (
+	"time"
+
 	"ai-svc/internal/controller"
 	"ai-svc/internal/middleware"
 	"ai-svc/internal/repository"
@@ -47,81 +49,106 @@ func SetupRoutes() *gin.Engine {
 	api := router.Group("/api/v1")
 	{
 		// 公开接口（无需认证）
-		// 使用预定义的SMS限流配置
+		// 使用SMS限流配置
 		api.POST(
 			"/sms/send",
-			middleware.CustomRateLimit(rateLimiter, middleware.SMSRateLimitConfig),
+			middleware.SMSRateLimit(rateLimiter),
 			smsController.SendSMS,
 		)
 		// 登录接口使用登录专用的限流配置
 		api.POST(
 			"/auth/login",
-			middleware.CustomRateLimit(rateLimiter, middleware.LoginRateLimitConfig),
+			middleware.LoginRateLimit(rateLimiter),
 			userController.LoginWithSMS,
 		)
+		// Token刷新接口（公开，使用登录限流）
+		api.POST(
+			"/auth/refresh",
+			middleware.LoginRateLimit(rateLimiter),
+			userController.RefreshToken,
+		)
 
-		// 需要认证的接口
+		// 需要认证的接口 - 统一使用设备验证
 		auth := api.Group("/users")
-		// 使用基础JWT认证
-		auth.Use(middleware.JWTAuth())
-		// 添加设备验证中间件
-		auth.Use(middleware.DeviceValidationMiddleware(deviceService))
+		// 使用增强的JWT+设备认证，确保设备有效性
+		auth.Use(middleware.JWTWithDeviceAuth())
 		{
 			// 当前用户相关接口（使用一般API限流）
 			auth.GET(
 				"/profile",
-				middleware.CustomRateLimit(rateLimiter, middleware.APIRateLimitConfig),
+				middleware.APIRateLimit(rateLimiter),
 				userController.GetProfile,
 			)
 			auth.PUT(
 				"/profile",
-				middleware.CustomRateLimit(rateLimiter, middleware.APIRateLimitConfig),
+				middleware.APIRateLimit(rateLimiter),
 				userController.UpdateProfile,
 			)
 
-			// 设备管理接口（敏感操作，使用严格限流）
+			// 设备管理接口
 			auth.GET(
 				"/devices",
-				middleware.CustomRateLimit(rateLimiter, middleware.APIRateLimitConfig),
+				middleware.APIRateLimit(rateLimiter),
 				userController.GetUserDevices,
 			)
+
+			// 设备踢出接口（敏感操作，使用严格限流）
 			auth.POST(
 				"/devices/kick",
-				middleware.CustomRateLimit(rateLimiter, middleware.StrictRateLimitConfig),
+				middleware.ConfigRateLimit(rateLimiter, "login"), // 使用登录限流作为严格限流
 				userController.KickDevices,
 			)
+		}
 
-			// 用户管理接口（查询操作使用宽松限流，删除操作使用严格限流）
-			auth.GET(
+		// 设备管理接口（使用增强认证）
+		devices := api.Group("/devices")
+		devices.Use(middleware.JWTWithDeviceAuth())
+		{
+			// 设备心跳上报
+			devices.POST(
+				"/heartbeat",
+				middleware.APIRateLimit(rateLimiter),
+				func(c *gin.Context) {
+					response.Success(c, gin.H{"message": "heartbeat received"})
+				},
+			)
+		}
+
+		// 管理接口 - 统一使用设备验证
+		admin := api.Group("/users")
+		admin.Use(middleware.JWTWithDeviceAuth())
+		{
+			// 用户管理接口（查询操作使用API限流）
+			admin.GET(
 				"/list",
-				middleware.CustomRateLimit(rateLimiter, middleware.LaxRateLimitConfig),
+				middleware.APIRateLimit(rateLimiter),
 				userController.GetUserList,
 			)
-			auth.GET(
+			admin.GET(
 				"/search",
-				middleware.CustomRateLimit(rateLimiter, middleware.LaxRateLimitConfig),
+				middleware.APIRateLimit(rateLimiter),
 				userController.SearchUsers,
 			)
-			auth.GET(
+			admin.GET(
 				"/:id",
-				middleware.CustomRateLimit(rateLimiter, middleware.APIRateLimitConfig),
+				middleware.APIRateLimit(rateLimiter),
 				userController.GetUserByID,
 			)
-			auth.DELETE(
+			admin.DELETE(
 				"/:id",
-				middleware.CustomRateLimit(rateLimiter, middleware.StrictRateLimitConfig),
+				middleware.ConfigRateLimit(rateLimiter, "login"), // 使用登录限流作为严格限流
 				userController.DeleteUser,
 			)
 		}
 
-		// 移动端专用接口（只允许mobile和tablet设备类型）
+		// 移动端专用接口（设备验证+设备类型限制）
 		mobile := api.Group("/mobile")
-		mobile.Use(middleware.JWTAuth())
-		mobile.Use(middleware.DeviceTypeMiddleware("mobile", "tablet"))
+		mobile.Use(middleware.JWTWithDeviceAuth())                      // 先进行设备验证
+		mobile.Use(middleware.DeviceTypeMiddleware("mobile", "tablet")) // 再限制设备类型
 		{
 			mobile.GET(
 				"/config",
-				middleware.CustomRateLimit(rateLimiter, middleware.APIRateLimitConfig),
+				middleware.APIRateLimit(rateLimiter),
 				func(c *gin.Context) {
 					response.Success(c, gin.H{
 						"message":     "移动端配置",
@@ -131,17 +158,19 @@ func SetupRoutes() *gin.Engine {
 			)
 		}
 
-		// 管理后台接口（只允许web设备类型）
-		admin := api.Group("/admin")
-		admin.Use(middleware.JWTAuth())
-		admin.Use(middleware.DeviceTypeMiddleware("web"))
+		// 管理后台接口（设备验证+设备类型限制）
+		adminPanel := api.Group("/admin")
+		adminPanel.Use(middleware.JWTWithDeviceAuth())         // 先进行设备验证
+		adminPanel.Use(middleware.DeviceTypeMiddleware("web")) // 再限制设备类型
 		{
-			admin.GET(
+			adminPanel.GET(
 				"/dashboard",
-				middleware.CustomRateLimit(rateLimiter, middleware.APIRateLimitConfig),
+				middleware.APIRateLimit(rateLimiter),
 				func(c *gin.Context) {
 					response.Success(c, gin.H{
-						"message":     "管理后台",
+						"message":     "管理后台仪表板",
+						"user_id":     middleware.GetCurrentUserID(c),
+						"device_id":   middleware.GetCurrentDeviceID(c),
 						"device_type": middleware.GetCurrentDeviceType(c),
 					})
 				},
@@ -150,9 +179,10 @@ func SetupRoutes() *gin.Engine {
 
 		// 自定义配置示例：创建一个极严格的限流配置
 		veryStrictConfig := middleware.RateLimitConfig{
-			Capacity:   1,
-			RefillRate: 1,
-			ErrorMsg:   "此操作每分钟只能执行1次，请稍后再试",
+			Capacity:       1,
+			RefillRate:     1,
+			RefillInterval: time.Minute,
+			ErrorMsg:       "此操作每分钟只能执行1次，请稍后再试",
 		}
 
 		// 使用自定义配置的示例接口

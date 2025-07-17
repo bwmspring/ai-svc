@@ -1,10 +1,11 @@
 package database
 
 import (
-	"ai-svc/internal/config"
-	"ai-svc/pkg/logger"
 	"fmt"
 	"time"
+
+	"ai-svc/internal/config"
+	"ai-svc/pkg/logger"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -20,7 +21,7 @@ func Connect() error {
 
 	// 配置GORM日志
 	var logLevel gormLogger.LogLevel
-	switch config.AppConfig.Log.Level {
+	switch config.AppConfig.Logger.Level {
 	case "debug":
 		logLevel = gormLogger.Info
 	case "info":
