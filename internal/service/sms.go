@@ -9,14 +9,16 @@ import (
 	"ai-svc/internal/model"
 	"ai-svc/internal/repository"
 	"ai-svc/pkg/logger"
+	"ai-svc/pkg/utils"
 
 	"gorm.io/gorm"
 )
 
 // SMSService 短信服务接口.
 type SMSService interface {
-	SendVerificationCode(req *model.SendSMSRequest, clientIP string) error
-	ValidateVerificationCode(phone, code, purpose string) error
+	SendVerificationCode(req *model.SendSMSRequest, clientIP, userAgent string, userID *uint) error
+	ValidateVerificationCode(phone, code, purpose, token string) error
+	ValidateVerificationCodeWithUser(phone, code, purpose, token string, userID uint) error
 }
 
 // smsService 短信服务实现.
@@ -42,53 +44,67 @@ func NewSMSServiceWithProvider(smsRepo repository.SMSRepository, provider SMSPro
 }
 
 // SendVerificationCode 发送短信验证码.
-func (s *smsService) SendVerificationCode(req *model.SendSMSRequest, clientIP string) error {
-	// 1. 防刷校验：检查发送频率限制
+func (s *smsService) SendVerificationCode(req *model.SendSMSRequest, clientIP, userAgent string, userID *uint) error {
+	// 1. 高安全级别操作需要用户身份验证
+	if model.IsHighSecurityPurpose(req.Purpose) {
+		if userID == nil {
+			return errors.New("高安全级别操作需要用户登录")
+		}
+	}
+
+	// 2. 防刷校验：检查发送频率限制
 	if err := s.checkSendFrequency(req.Phone, clientIP); err != nil {
 		return err
 	}
 
-	// 2. 检查是否已有有效验证码
+	// 3. 检查是否已有有效验证码
 	if err := s.checkExistingCode(req.Phone, req.Purpose); err != nil {
 		return err
 	}
 
-	// 3. 生成6位随机验证码
+	// 4. 生成6位随机验证码
 	code, err := s.generateVerificationCode()
 	if err != nil {
 		logger.Error("生成验证码失败", map[string]any{"error": err.Error()})
 		return errors.New("生成验证码失败")
 	}
 
-	// 4. 创建验证码记录
+	// 5. 创建验证码记录
 	smsCode := &model.SMSVerificationCode{
 		Phone:     req.Phone,
 		Code:      code,
 		Purpose:   req.Purpose,
 		ExpiredAt: time.Now().Add(5 * time.Minute), // 5分钟过期
 		ClientIP:  clientIP,
+		UserAgent: userAgent,
 	}
 
-	// 5. 保存验证码
+	// 6. 生成唯一验证token
+	if err := smsCode.GenerateToken(); err != nil {
+		logger.Error("生成验证token失败", map[string]any{"error": err.Error()})
+		return errors.New("生成验证token失败")
+	}
+
+	// 7. 保存验证码
 	if err := s.smsRepo.CreateSMSCode(smsCode); err != nil {
 		logger.Error("保存验证码失败", map[string]any{"error": err.Error()})
 		return errors.New("保存验证码失败")
 	}
 
-	// 6. 调用短信服务商发送短信
+	// 8. 调用短信服务商发送短信
 	if err := s.sendSMSToProvider(req.Phone, code, req.Purpose); err != nil {
 		logger.Error("发送短信失败", map[string]any{"error": err.Error(), "phone": req.Phone})
 		return errors.New("发送短信失败")
 	}
 
-	// 7. 记录发送日志
-	s.logSMSSend(req.Phone, req.Purpose, clientIP)
+	// 9. 记录发送日志
+	s.logSMSSend(req.Phone, req.Purpose, clientIP, userID)
 
 	return nil
 }
 
 // ValidateVerificationCode 验证短信验证码.
-func (s *smsService) ValidateVerificationCode(phone, code, purpose string) error {
+func (s *smsService) ValidateVerificationCode(phone, code, purpose, token string) error {
 	smsCode, err := s.smsRepo.GetLatestSMSCode(phone, purpose)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -99,6 +115,16 @@ func (s *smsService) ValidateVerificationCode(phone, code, purpose string) error
 
 	if !smsCode.IsValid() {
 		return errors.New("验证码不存在或已过期")
+	}
+
+	// 验证token（如果提供）
+	if token != "" && smsCode.Token != token {
+		logger.Warn("验证码token不匹配", map[string]any{
+			"phone":   phone,
+			"purpose": purpose,
+			"ip":      smsCode.ClientIP,
+		})
+		return errors.New("验证码token无效")
 	}
 
 	if smsCode.Code != code {
@@ -118,6 +144,22 @@ func (s *smsService) ValidateVerificationCode(phone, code, purpose string) error
 	}
 
 	return nil
+}
+
+// ValidateVerificationCodeWithUser 带用户身份验证的验证码验证
+func (s *smsService) ValidateVerificationCodeWithUser(phone, code, purpose, token string, userID uint) error {
+	// 高安全级别操作需要验证用户身份
+	if model.IsHighSecurityPurpose(purpose) {
+		// 这里可以添加额外的用户身份验证逻辑
+		// 例如检查用户是否登录、检查用户权限等
+		logger.Info("高安全级别验证码验证", map[string]any{
+			"phone":   phone,
+			"purpose": purpose,
+			"user_id": userID,
+		})
+	}
+
+	return s.ValidateVerificationCode(phone, code, purpose, token)
 }
 
 // checkSendFrequency 检查发送频率限制.
@@ -181,11 +223,18 @@ func (s *smsService) sendSMSToProvider(phone, code, purpose string) error {
 }
 
 // logSMSSend 记录短信发送日志.
-func (s *smsService) logSMSSend(phone, purpose, clientIP string) {
-	logger.Info("短信发送成功", map[string]any{
-		"phone":     phone,
+func (s *smsService) logSMSSend(phone, purpose, clientIP string, userID *uint) {
+	maskedPhone := utils.MaskPhone(phone)
+	logData := map[string]any{
+		"phone":     maskedPhone, // 使用脱敏手机号
 		"purpose":   purpose,
 		"client_ip": clientIP,
 		"timestamp": time.Now().Unix(),
-	})
+	}
+
+	if userID != nil {
+		logData["user_id"] = *userID
+	}
+
+	logger.Info("短信发送成功", logData)
 }

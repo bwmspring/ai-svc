@@ -57,7 +57,7 @@ func (s *userService) LoginWithSMS(
 	ip, userAgent string,
 ) (*model.LoginResponse, bool, error) {
 	// 验证验证码
-	if err := s.smsService.ValidateVerificationCode(req.Phone, req.Code, "login"); err != nil {
+	if err := s.smsService.ValidateVerificationCode(req.Phone, req.Code, "login", req.Token); err != nil {
 		return nil, false, err
 	}
 
@@ -314,12 +314,12 @@ func (s *userService) convertToResponse(user *model.User) *model.UserResponse {
 
 	return &model.UserResponse{
 		ID:          user.ID,
-		Phone:       user.Phone,
+		Phone:       user.GetMaskedPhone(), // 脱敏手机号
 		Username:    toStringPtr(user.Username),
-		Email:       toStringPtr(user.Email),
+		Email:       toStringPtr(user.GetMaskedEmail()), // 脱敏邮箱
 		Nickname:    toStringPtr(user.Nickname),
 		Avatar:      toStringPtr(user.Avatar),
-		RealName:    toStringPtr(user.RealName),
+		RealName:    toStringPtr(user.GetMaskedRealName()), // 脱敏真实姓名
 		Gender:      user.Gender,
 		VIPLevel:    user.VIPLevel,
 		VIPExpireAt: user.VIPExpireAt,

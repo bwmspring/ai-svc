@@ -103,7 +103,7 @@ func (s *jwtService) GenerateRefreshToken(user *model.User, device *model.UserDe
 	return refreshToken, nil
 }
 
-// RefreshToken 使用refresh token生成新的access token.
+// RefreshToken 使用refresh token生成新的access token
 func (s *jwtService) RefreshToken(refreshToken string) (*model.TokenPair, error) {
 	// 1. 验证refresh token
 	claims, err := s.ValidateRefreshToken(refreshToken)

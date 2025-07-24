@@ -55,6 +55,12 @@ func SetupRoutes() *gin.Engine {
 			middleware.SMSRateLimit(rateLimiter),
 			smsController.SendSMS,
 		)
+		// 验证码验证接口（公开，使用SMS限流）
+		api.POST(
+			"/sms/validate",
+			middleware.SMSRateLimit(rateLimiter),
+			smsController.ValidateSMS,
+		)
 		// 登录接口使用登录专用的限流配置
 		api.POST(
 			"/auth/login",

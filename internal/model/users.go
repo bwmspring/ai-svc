@@ -3,6 +3,8 @@ package model
 import (
 	"time"
 
+	"ai-svc/pkg/utils"
+
 	"gorm.io/gorm"
 )
 
@@ -59,17 +61,42 @@ func (u *User) IsActive() bool {
 	return u.Status == 1
 }
 
+// GetMaskedPhone 获取脱敏后的手机号
+func (u *User) GetMaskedPhone() string {
+	return utils.MaskPhone(u.Phone)
+}
+
+// GetMaskedEmail 获取脱敏后的邮箱
+func (u *User) GetMaskedEmail() string {
+	return utils.MaskEmail(u.Email)
+}
+
+// GetMaskedRealName 获取脱敏后的真实姓名
+func (u *User) GetMaskedRealName() string {
+	return utils.MaskName(u.RealName)
+}
+
 // SendSMSRequest 发送短信验证码请求.
 type SendSMSRequest struct {
 	Phone   string `json:"phone"   validate:"required,min=11,max=20"`
-	Purpose string `json:"purpose" validate:"required,oneof=login register reset"` // login, register, reset
+	Purpose string `json:"purpose" validate:"required,oneof=login register reset change payment withdraw security device"` // 扩展验证码用途
+	Token   string `json:"token,omitempty"`                                                                                // 可选token，用于高安全级别操作
 }
 
 // LoginWithSMSRequest 手机号+验证码登录请求（扩展设备信息）.
 type LoginWithSMSRequest struct {
 	Phone      string                     `json:"phone"       validate:"required,min=11,max=20"`
 	Code       string                     `json:"code"        validate:"required,min=4,max=10"`
+	Token      string                     `json:"token,omitempty"`                 // 验证token
 	DeviceInfo *DeviceRegistrationRequest `json:"device_info" validate:"required"` // 设备注册信息（客户端只传设备指纹）
+}
+
+// ValidateSMSRequest 验证码验证请求
+type ValidateSMSRequest struct {
+	Phone   string `json:"phone"   validate:"required,min=11,max=20"`
+	Code    string `json:"code"    validate:"required,min=4,max=10"`
+	Purpose string `json:"purpose" validate:"required"`
+	Token   string `json:"token,omitempty"` // 验证token
 }
 
 // UpdateUserRequest 更新用户请求.
