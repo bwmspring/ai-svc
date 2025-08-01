@@ -1,11 +1,10 @@
 package service
 
 import (
+	"ai-svc/internal/model"
 	"context"
 	"fmt"
 	"io"
-
-	"ai-svc/internal/model"
 )
 
 // AIProvider AI 提供商接口 - 各个提供商的具体实现

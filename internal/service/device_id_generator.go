@@ -1,6 +1,9 @@
 package service
 
 import (
+	"ai-svc/internal/model"
+	"ai-svc/internal/repository"
+	"ai-svc/pkg/logger"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -8,10 +11,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"ai-svc/internal/model"
-	"ai-svc/internal/repository"
-	"ai-svc/pkg/logger"
 )
 
 // DeviceIDGeneratorService 设备ID生成服务接口
@@ -88,7 +87,11 @@ func NewDeviceIDGeneratorService() DeviceIDGeneratorService {
 }
 
 // GenerateDeviceID 生成设备ID
-func (s *deviceIDGeneratorService) GenerateDeviceID(deviceType string, userID uint, fingerprint string) (string, error) {
+func (s *deviceIDGeneratorService) GenerateDeviceID(
+	deviceType string,
+	userID uint,
+	fingerprint string,
+) (string, error) {
 	generator, exists := s.generators[deviceType]
 	if !exists {
 		return "", fmt.Errorf("不支持的设备类型: %s", deviceType)
@@ -242,7 +245,11 @@ func (s *deviceIDGeneratorService) calculateChecksum(data string) string {
 // DeviceRegistrationService 设备注册服务接口
 type DeviceRegistrationService interface {
 	// 注册新设备
-	RegisterDevice(userID uint, req *model.DeviceRegistrationRequest, clientIP, userAgent string) (*model.DeviceRegistrationResponse, error)
+	RegisterDevice(
+		userID uint,
+		req *model.DeviceRegistrationRequest,
+		clientIP, userAgent string,
+	) (*model.DeviceRegistrationResponse, error)
 
 	// 检查设备是否已注册
 	CheckDeviceRegistration(fingerprint string) (*model.DeviceRegistrationResponse, error)
@@ -274,7 +281,6 @@ func (s *deviceRegistrationService) RegisterDevice(
 	req *model.DeviceRegistrationRequest,
 	clientIP, userAgent string,
 ) (*model.DeviceRegistrationResponse, error) {
-
 	// 1. 生成标准化设备指纹
 	fingerprint := s.idGenerator.GenerateFingerprint(req, clientIP)
 
@@ -336,7 +342,9 @@ func (s *deviceRegistrationService) RegisterDevice(
 }
 
 // CheckDeviceRegistration 检查设备是否已注册
-func (s *deviceRegistrationService) CheckDeviceRegistration(fingerprint string) (*model.DeviceRegistrationResponse, error) {
+func (s *deviceRegistrationService) CheckDeviceRegistration(
+	fingerprint string,
+) (*model.DeviceRegistrationResponse, error) {
 	// 这里需要查询指纹数据库
 	// 暂时返回nil表示未注册
 	return nil, fmt.Errorf("设备未注册")

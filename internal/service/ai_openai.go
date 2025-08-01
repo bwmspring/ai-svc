@@ -1,6 +1,8 @@
 package service
 
 import (
+	"ai-svc/internal/config"
+	"ai-svc/internal/model"
 	"bufio"
 	"bytes"
 	"context"
@@ -10,9 +12,6 @@ import (
 	"net/http"
 	"strings"
 	"time"
-
-	"ai-svc/internal/config"
-	"ai-svc/internal/model"
 )
 
 // OpenAIProvider OpenAI 提供商实现

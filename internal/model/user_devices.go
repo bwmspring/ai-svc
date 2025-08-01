@@ -13,25 +13,25 @@ const (
 
 // UserDevice 用户设备模型
 type UserDevice struct {
-	ID                uint       `gorm:"primarykey"                                    json:"id"`
-	UserID            uint       `gorm:"index;not null"                                json:"user_id"`
-	DeviceID          string     `gorm:"type:varchar(64);not null;uniqueIndex"        json:"device_id"`          // 服务端生成的唯一ID
-	DeviceFingerprint string     `gorm:"type:varchar(128);not null;index"             json:"device_fingerprint"` // 客户端指纹
-	DeviceType        string     `gorm:"type:varchar(20);not null"                     json:"device_type"`
-	DeviceName        string     `gorm:"type:varchar(100)"                             json:"device_name"`
-	AppVersion        string     `gorm:"type:varchar(20)"                              json:"app_version"`
-	OSVersion         string     `gorm:"type:varchar(50)"                              json:"os_version"`
-	Platform          string     `gorm:"type:varchar(50)"                              json:"platform"`
-	ClientIP          string     `gorm:"type:varchar(45)"                              json:"client_ip"`
-	UserAgent         string     `gorm:"type:varchar(500)"                             json:"user_agent"`
-	Status            int        `gorm:"type:tinyint;default:1"                        json:"status"`         // 设备状态
-	SecurityLevel     int        `gorm:"type:tinyint;default:2"                        json:"security_level"` // 安全级别
-	TrustScore        float32    `gorm:"type:decimal(3,2);default:1.00"                json:"trust_score"`    // 信任分数
-	LoginAt           time.Time  `gorm:"not null"                                      json:"login_at"`
-	LastActiveAt      time.Time  `gorm:"not null"                                      json:"last_active_at"`
-	ExpiresAt         *time.Time `gorm:"index"                                        json:"expires_at"` // 设备过期时间
-	CreatedAt         time.Time  `                                                     json:"created_at"`
-	UpdatedAt         time.Time  `                                                     json:"updated_at"`
+	ID                uint       `gorm:"primarykey"                            json:"id"`
+	UserID            uint       `gorm:"index;not null"                        json:"user_id"`
+	DeviceID          string     `gorm:"type:varchar(64);not null;uniqueIndex" json:"device_id"`          // 服务端生成的唯一ID
+	DeviceFingerprint string     `gorm:"type:varchar(128);not null;index"      json:"device_fingerprint"` // 客户端指纹
+	DeviceType        string     `gorm:"type:varchar(20);not null"             json:"device_type"`
+	DeviceName        string     `gorm:"type:varchar(100)"                     json:"device_name"`
+	AppVersion        string     `gorm:"type:varchar(20)"                      json:"app_version"`
+	OSVersion         string     `gorm:"type:varchar(50)"                      json:"os_version"`
+	Platform          string     `gorm:"type:varchar(50)"                      json:"platform"`
+	ClientIP          string     `gorm:"type:varchar(45)"                      json:"client_ip"`
+	UserAgent         string     `gorm:"type:varchar(500)"                     json:"user_agent"`
+	Status            int        `gorm:"type:tinyint;default:1"                json:"status"`         // 设备状态
+	SecurityLevel     int        `gorm:"type:tinyint;default:2"                json:"security_level"` // 安全级别
+	TrustScore        float32    `gorm:"type:decimal(3,2);default:1.00"        json:"trust_score"`    // 信任分数
+	LoginAt           time.Time  `gorm:"not null"                              json:"login_at"`
+	LastActiveAt      time.Time  `gorm:"not null"                              json:"last_active_at"`
+	ExpiresAt         *time.Time `gorm:"index"                                 json:"expires_at"` // 设备过期时间
+	CreatedAt         time.Time  `                                             json:"created_at"`
+	UpdatedAt         time.Time  `                                             json:"updated_at"`
 }
 
 // TableName 表名

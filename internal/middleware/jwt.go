@@ -1,13 +1,12 @@
 package middleware
 
 import (
-	"strings"
-	"time"
-
 	"ai-svc/internal/config"
 	"ai-svc/internal/repository"
 	"ai-svc/pkg/logger"
 	"ai-svc/pkg/response"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"

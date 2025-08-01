@@ -1,12 +1,12 @@
 package service
 
 import (
-	"errors"
-	"time"
-
 	"ai-svc/internal/model"
 	"ai-svc/internal/repository"
 	"ai-svc/pkg/logger"
+	"context"
+	"errors"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -31,10 +31,11 @@ type UserService interface {
 
 // userService 用户服务实现.
 type userService struct {
-	userRepo      repository.UserRepository
-	smsService    SMSService
-	deviceService DeviceService
-	jwtService    JWTService
+	userRepo        repository.UserRepository
+	smsService      SMSService
+	deviceService   DeviceService
+	jwtService      JWTService
+	loginLogService LoginLogService // 新增登录日志服务
 }
 
 // NewUserService 创建用户服务实例.
@@ -42,12 +43,14 @@ func NewUserService(
 	userRepo repository.UserRepository,
 	smsService SMSService,
 	deviceService DeviceService,
+	loginLogService LoginLogService, // 新增参数
 ) UserService {
 	return &userService{
-		userRepo:      userRepo,
-		smsService:    smsService,
-		deviceService: deviceService,
-		jwtService:    NewJWTServiceWithDeviceService(deviceService),
+		userRepo:        userRepo,
+		smsService:      smsService,
+		deviceService:   deviceService,
+		jwtService:      NewJWTServiceWithDeviceService(deviceService),
+		loginLogService: loginLogService, // 新增字段
 	}
 }
 
@@ -56,13 +59,44 @@ func (s *userService) LoginWithSMS(
 	req *model.LoginWithSMSRequest,
 	ip, userAgent string,
 ) (*model.LoginResponse, bool, error) {
+	// 记录登录尝试
+	if s.loginLogService != nil {
+		s.loginLogService.LogLoginAttempt(context.Background(), 0, req.Phone, model.LoginTypeSMS, ip, userAgent, nil)
+	}
+
 	// 验证验证码
 	if err := s.smsService.ValidateVerificationCode(req.Phone, req.Code, "login", req.Token); err != nil {
+		// 记录登录失败
+		if s.loginLogService != nil {
+			s.loginLogService.LogLoginFailed(
+				context.Background(),
+				0,
+				req.Phone,
+				model.LoginTypeSMS,
+				"验证码错误",
+				ip,
+				userAgent,
+				nil,
+			)
+		}
 		return nil, false, err
 	}
 
 	// 验证设备信息
 	if req.DeviceInfo == nil {
+		// 记录登录失败
+		if s.loginLogService != nil {
+			s.loginLogService.LogLoginFailed(
+				context.Background(),
+				0,
+				req.Phone,
+				model.LoginTypeSMS,
+				"设备信息不能为空",
+				ip,
+				userAgent,
+				nil,
+			)
+		}
 		return nil, false, errors.New("设备信息不能为空")
 	}
 
@@ -84,16 +118,37 @@ func (s *userService) LoginWithSMS(
 
 			if err := s.userRepo.Create(user); err != nil {
 				logger.Error("创建用户失败", map[string]any{"error": err.Error()})
+				// 记录登录失败
+				if s.loginLogService != nil {
+					s.loginLogService.LogLoginFailed(
+						context.Background(),
+						0,
+						req.Phone,
+						model.LoginTypeSMS,
+						"创建用户失败",
+						ip,
+						userAgent,
+						nil,
+					)
+				}
 				return nil, false, errors.New("创建用户失败")
 			}
 			isNewUser = true
 		} else {
 			logger.Error("查询用户失败", map[string]any{"error": err.Error()})
+			// 记录登录失败
+			if s.loginLogService != nil {
+				s.loginLogService.LogLoginFailed(context.Background(), 0, req.Phone, model.LoginTypeSMS, "查询用户失败", ip, userAgent, nil)
+			}
 			return nil, false, errors.New("登录失败")
 		}
 	} else {
 		// 用户存在，检查状态
 		if user.Status == 0 {
+			// 记录登录失败
+			if s.loginLogService != nil {
+				s.loginLogService.LogLoginFailed(context.Background(), user.ID, req.Phone, model.LoginTypeSMS, "账户已被禁用", ip, userAgent, nil)
+			}
 			return nil, false, errors.New("账户已被禁用")
 		}
 
@@ -113,6 +168,19 @@ func (s *userService) LoginWithSMS(
 	device, err := s.deviceService.HandleDeviceLogin(user.ID, req.DeviceInfo, ip, userAgent)
 	if err != nil {
 		logger.Error("设备登录失败", map[string]any{"error": err.Error()})
+		// 记录登录失败
+		if s.loginLogService != nil {
+			s.loginLogService.LogLoginFailed(
+				context.Background(),
+				user.ID,
+				req.Phone,
+				model.LoginTypeSMS,
+				"设备登录失败",
+				ip,
+				userAgent,
+				nil,
+			)
+		}
 		return nil, false, errors.New("设备登录失败")
 	}
 
@@ -120,6 +188,19 @@ func (s *userService) LoginWithSMS(
 	accessToken, err := s.jwtService.GenerateToken(user, device, device.DeviceID) // 使用deviceID作为唯一标识
 	if err != nil {
 		logger.Error("生成Access Token失败", map[string]any{"error": err.Error()})
+		// 记录登录失败
+		if s.loginLogService != nil {
+			s.loginLogService.LogLoginFailed(
+				context.Background(),
+				user.ID,
+				req.Phone,
+				model.LoginTypeSMS,
+				"生成Token失败",
+				ip,
+				userAgent,
+				nil,
+			)
+		}
 		return nil, false, errors.New("生成Access Token失败")
 	}
 
@@ -127,7 +208,36 @@ func (s *userService) LoginWithSMS(
 	refreshToken, err := s.jwtService.GenerateRefreshToken(user, device)
 	if err != nil {
 		logger.Error("生成Refresh Token失败", map[string]any{"error": err.Error()})
+		// 记录登录失败
+		if s.loginLogService != nil {
+			s.loginLogService.LogLoginFailed(
+				context.Background(),
+				user.ID,
+				req.Phone,
+				model.LoginTypeSMS,
+				"生成Refresh Token失败",
+				ip,
+				userAgent,
+				nil,
+			)
+		}
 		return nil, false, errors.New("生成Refresh Token失败")
+	}
+
+	// 记录登录成功
+	if s.loginLogService != nil {
+		s.loginLogService.LogLoginSuccess(
+			context.Background(),
+			user.ID,
+			user.Phone,
+			model.LoginTypeSMS,
+			device.DeviceID,
+			device.DeviceType,
+			ip,
+			userAgent,
+			isNewUser,
+			nil, // 地理位置信息，可根据需要获取
+		)
 	}
 
 	logger.Info("用户登录成功", map[string]any{

@@ -1,13 +1,12 @@
 package main
 
 import (
-	"fmt"
-	"log"
-	"time"
-
 	"ai-svc/internal/model"
 	"ai-svc/internal/service"
 	"ai-svc/pkg/logger"
+	"fmt"
+	"log"
+	"time"
 )
 
 // 演示后端统一生成设备ID的流程

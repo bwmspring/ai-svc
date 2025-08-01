@@ -1,11 +1,10 @@
 package controller
 
 import (
+	"ai-svc/internal/middleware"
 	"ai-svc/internal/model"
 	"ai-svc/internal/service"
 	"ai-svc/pkg/response"
-
-	"ai-svc/internal/middleware"
 	"ai-svc/pkg/utils"
 
 	"github.com/gin-gonic/gin"

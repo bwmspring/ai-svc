@@ -1,11 +1,10 @@
 package cmd
 
 import (
+	"ai-svc/internal/config"
 	"fmt"
 	"os"
 	"path/filepath"
-
-	"ai-svc/internal/config"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"

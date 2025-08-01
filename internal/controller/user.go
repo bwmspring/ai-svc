@@ -1,12 +1,11 @@
 package controller
 
 import (
-	"strconv"
-
 	"ai-svc/internal/middleware"
 	"ai-svc/internal/model"
 	"ai-svc/internal/service"
 	"ai-svc/pkg/response"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"

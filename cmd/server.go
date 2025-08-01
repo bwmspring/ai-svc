@@ -1,6 +1,11 @@
 package cmd
 
 import (
+	"ai-svc/internal/config"
+	"ai-svc/internal/model"
+	"ai-svc/internal/routes"
+	"ai-svc/pkg/database"
+	"ai-svc/pkg/logger"
 	"context"
 	"fmt"
 	"net/http"
@@ -9,10 +14,6 @@ import (
 	"strconv"
 	"syscall"
 	"time"
-
-	"ai-svc/internal/config"
-	"ai-svc/internal/routes"
-	"ai-svc/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
@@ -104,10 +105,15 @@ func runServer() error {
 	// 第三步：应用命令行参数覆盖配置
 	applyCommandLineOverrides()
 
-	// 第四步：设置 Gin 框架模式
+	// 第四步：连接数据库
+	if err := connectDatabase(); err != nil {
+		return fmt.Errorf("数据库连接失败: %w", err)
+	}
+
+	// 第五步：设置 Gin 框架模式
 	setupGinMode()
 
-	// 第五步：初始化路由和中间件
+	// 第六步：初始化路由和中间件
 	router := routes.SetupRoutes()
 
 	// 第六步：配置 HTTP 服务器
@@ -252,6 +258,27 @@ func startServer(server *http.Server) {
 			})
 		}
 	}()
+}
+
+// connectDatabase 连接数据库并执行迁移
+func connectDatabase() error {
+	// 连接数据库
+	if err := database.Connect(); err != nil {
+		return fmt.Errorf("数据库连接失败: %w", err)
+	}
+
+	// 执行数据库迁移
+	db := database.GetDB()
+	if err := db.AutoMigrate(
+		&model.User{},
+		&model.MessageDefinition{},
+		&model.UserMessage{},
+	); err != nil {
+		return fmt.Errorf("数据库迁移失败: %w", err)
+	}
+
+	logger.Info("数据库连接和迁移成功", map[string]any{})
+	return nil
 }
 
 // 等待系统信号，然后优雅地关闭服务器，确保正在处理的请求能够完成.

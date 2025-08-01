@@ -1,15 +1,14 @@
 package service
 
 import (
-	"crypto/rand"
-	"errors"
-	"math/big"
-	"time"
-
 	"ai-svc/internal/model"
 	"ai-svc/internal/repository"
 	"ai-svc/pkg/logger"
 	"ai-svc/pkg/utils"
+	"crypto/rand"
+	"errors"
+	"math/big"
+	"time"
 
 	"gorm.io/gorm"
 )

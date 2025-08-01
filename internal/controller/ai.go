@@ -1,11 +1,10 @@
 package controller
 
 import (
-	"strconv"
-
 	"ai-svc/internal/config"
 	"ai-svc/internal/service"
 	"ai-svc/pkg/response"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )

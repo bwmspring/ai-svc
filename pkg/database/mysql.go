@@ -1,11 +1,10 @@
 package database
 
 import (
-	"fmt"
-	"time"
-
 	"ai-svc/internal/config"
 	"ai-svc/pkg/logger"
+	"fmt"
+	"time"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"

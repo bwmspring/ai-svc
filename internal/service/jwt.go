@@ -1,11 +1,10 @@
 package service
 
 import (
-	"errors"
-
 	"ai-svc/internal/middleware"
 	"ai-svc/internal/model"
 	"ai-svc/pkg/logger"
+	"errors"
 )
 
 // JWTService JWT服务接口.

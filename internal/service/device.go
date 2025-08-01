@@ -1,15 +1,14 @@
 package service
 
 import (
-	"crypto/rand"
-	"encoding/hex"
-	"fmt"
-	"time"
-
 	"ai-svc/internal/config"
 	"ai-svc/internal/model"
 	"ai-svc/internal/repository"
 	"ai-svc/pkg/logger"
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
+	"time"
 )
 
 // DeviceCacheService 设备缓存服务接口
@@ -29,7 +28,11 @@ type DeviceCacheService interface {
 // DeviceService 设备管理服务接口
 type DeviceService interface {
 	// 核心设备管理
-	HandleDeviceLogin(userID uint, deviceInfo *model.DeviceRegistrationRequest, clientIP, userAgent string) (*model.UserDevice, error)
+	HandleDeviceLogin(
+		userID uint,
+		deviceInfo *model.DeviceRegistrationRequest,
+		clientIP, userAgent string,
+	) (*model.UserDevice, error)
 	GetUserDevices(userID uint, currentDeviceID string) (*model.DeviceListResponse, error)
 	KickDevices(userID uint, deviceIDs []string) error
 	KickOtherDevices(userID uint, currentDeviceID string) error
@@ -65,7 +68,11 @@ func NewDeviceService(deviceRepo repository.DeviceRepository) DeviceService {
 }
 
 // HandleDeviceLogin 处理设备登录
-func (s *deviceService) HandleDeviceLogin(userID uint, deviceInfo *model.DeviceRegistrationRequest, clientIP, userAgent string) (*model.UserDevice, error) {
+func (s *deviceService) HandleDeviceLogin(
+	userID uint,
+	deviceInfo *model.DeviceRegistrationRequest,
+	clientIP, userAgent string,
+) (*model.UserDevice, error) {
 	// 1. 通过设备指纹检查设备是否已存在
 	existingDevice, err := s.deviceRepo.GetDeviceByFingerprint(deviceInfo.DeviceFingerprint)
 	if err == nil && existingDevice != nil {
@@ -383,7 +390,10 @@ func (s *deviceService) kickOldestDeviceByType(userID uint, deviceType string) e
 }
 
 // updateDeviceActivity 更新现有设备活跃时间
-func (s *deviceService) updateDeviceActivity(device *model.UserDevice, clientIP, userAgent string) (*model.UserDevice, error) {
+func (s *deviceService) updateDeviceActivity(
+	device *model.UserDevice,
+	clientIP, userAgent string,
+) (*model.UserDevice, error) {
 	now := time.Now()
 	device.LastActiveAt = now
 	device.ClientIP = clientIP
@@ -441,7 +451,11 @@ func generateDeviceID(deviceType string) (string, error) {
 }
 
 // registerNewDevice 注册新设备
-func (s *deviceService) registerNewDevice(userID uint, deviceInfo *model.DeviceRegistrationRequest, clientIP, userAgent string) (*model.UserDevice, error) {
+func (s *deviceService) registerNewDevice(
+	userID uint,
+	deviceInfo *model.DeviceRegistrationRequest,
+	clientIP, userAgent string,
+) (*model.UserDevice, error) {
 	// 生成设备ID
 	deviceID, err := generateDeviceID(deviceInfo.DeviceType)
 	if err != nil {

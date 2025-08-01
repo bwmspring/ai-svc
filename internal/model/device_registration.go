@@ -25,15 +25,15 @@ type DeviceRegistrationResponse struct {
 
 // DeviceFingerprint 设备指纹信息（用于检测重复注册）
 type DeviceFingerprint struct {
-	ID                uint      `gorm:"primarykey"                                    json:"id"`
-	Fingerprint       string    `gorm:"type:varchar(128);not null;uniqueIndex"       json:"fingerprint"`         // 设备指纹（唯一）
-	DeviceID          string    `gorm:"type:varchar(64);not null;index"              json:"device_id"`           // 关联的设备ID
-	UserID            uint      `gorm:"index;not null"                                json:"user_id"`            // 用户ID
-	FirstSeenAt       time.Time `gorm:"not null"                                      json:"first_seen_at"`      // 首次见到时间
-	LastSeenAt        time.Time `gorm:"not null"                                      json:"last_seen_at"`       // 最后见到时间
-	RegistrationCount int       `gorm:"default:1"                                     json:"registration_count"` // 注册次数（检测异常）
-	CreatedAt         time.Time `                                                     json:"created_at"`
-	UpdatedAt         time.Time `                                                     json:"updated_at"`
+	ID                uint      `gorm:"primarykey"                             json:"id"`
+	Fingerprint       string    `gorm:"type:varchar(128);not null;uniqueIndex" json:"fingerprint"`        // 设备指纹（唯一）
+	DeviceID          string    `gorm:"type:varchar(64);not null;index"        json:"device_id"`          // 关联的设备ID
+	UserID            uint      `gorm:"index;not null"                         json:"user_id"`            // 用户ID
+	FirstSeenAt       time.Time `gorm:"not null"                               json:"first_seen_at"`      // 首次见到时间
+	LastSeenAt        time.Time `gorm:"not null"                               json:"last_seen_at"`       // 最后见到时间
+	RegistrationCount int       `gorm:"default:1"                              json:"registration_count"` // 注册次数（检测异常）
+	CreatedAt         time.Time `                                              json:"created_at"`
+	UpdatedAt         time.Time `                                              json:"updated_at"`
 }
 
 // TableName 表名
@@ -64,10 +64,10 @@ type DeviceInfoV2 struct {
 
 // LoginWithDeviceRequest 带设备注册的登录请求
 type LoginWithDeviceRequest struct {
-	Phone            string                     `json:"phone"        validate:"required,len=11"`
-	Code             string                     `json:"code"         validate:"required,len=6"`
-	DeviceInfo       *DeviceRegistrationRequest `json:"device_info"  validate:"required"` // 设备注册信息
-	ExistingDeviceID string                     `json:"existing_device_id,omitempty"`     // 已有设备ID（可选）
+	Phone            string                     `json:"phone"                        validate:"required,len=11"`
+	Code             string                     `json:"code"                         validate:"required,len=6"`
+	DeviceInfo       *DeviceRegistrationRequest `json:"device_info"                  validate:"required"` // 设备注册信息
+	ExistingDeviceID string                     `json:"existing_device_id,omitempty"`                     // 已有设备ID（可选）
 }
 
 // DeviceStatus 设备状态枚举

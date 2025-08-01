@@ -1,25 +1,24 @@
 package model
 
 import (
+	"ai-svc/pkg/utils"
 	"crypto/rand"
 	"encoding/hex"
 	"time"
-
-	"ai-svc/pkg/utils"
 )
 
 // SMSVerificationCode 短信验证码模型.
 type SMSVerificationCode struct {
-	ID        uint       `gorm:"primarykey"                      json:"id"`
-	Phone     string     `gorm:"type:varchar(20);not null;index" json:"phone"      validate:"required"`
-	Code      string     `gorm:"type:varchar(10);not null"       json:"-"`
-	Token     string     `gorm:"type:varchar(64);not null;uniqueIndex" json:"token"` // 唯一验证token
-	Purpose   string     `gorm:"type:varchar(20);not null"       json:"purpose"`     // login, register, reset等
-	ClientIP  string     `gorm:"type:varchar(45);not null"       json:"client_ip"`   // 客户端IP地址
-	UserAgent string     `gorm:"type:varchar(500)"               json:"user_agent"`  // 用户代理
-	UsedAt    *time.Time `gorm:"comment:使用时间"                    json:"used_at"`
-	ExpiredAt time.Time  `gorm:"not null"                        json:"expired_at"`
-	CreatedAt time.Time  `                                       json:"created_at"`
+	ID        uint       `gorm:"primarykey"                            json:"id"`
+	Phone     string     `gorm:"type:varchar(20);not null;index"       json:"phone"      validate:"required"`
+	Code      string     `gorm:"type:varchar(10);not null"             json:"-"`
+	Token     string     `gorm:"type:varchar(64);not null;uniqueIndex" json:"token"`      // 唯一验证token
+	Purpose   string     `gorm:"type:varchar(20);not null"             json:"purpose"`    // login, register, reset等
+	ClientIP  string     `gorm:"type:varchar(45);not null"             json:"client_ip"`  // 客户端IP地址
+	UserAgent string     `gorm:"type:varchar(500)"                     json:"user_agent"` // 用户代理
+	UsedAt    *time.Time `gorm:"comment:使用时间"                          json:"used_at"`
+	ExpiredAt time.Time  `gorm:"not null"                              json:"expired_at"`
+	CreatedAt time.Time  `                                             json:"created_at"`
 }
 
 // TableName 表名.

@@ -1,9 +1,8 @@
 package model
 
 import (
-	"time"
-
 	"ai-svc/pkg/utils"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -78,24 +77,24 @@ func (u *User) GetMaskedRealName() string {
 
 // SendSMSRequest 发送短信验证码请求.
 type SendSMSRequest struct {
-	Phone   string `json:"phone"   validate:"required,min=11,max=20"`
-	Purpose string `json:"purpose" validate:"required,oneof=login register reset change payment withdraw security device"` // 扩展验证码用途
-	Token   string `json:"token,omitempty"`                                                                                // 可选token，用于高安全级别操作
+	Phone   string `json:"phone"           validate:"required,min=11,max=20"`
+	Purpose string `json:"purpose"         validate:"required,oneof=login register reset change payment withdraw security device"` // 扩展验证码用途
+	Token   string `json:"token,omitempty"`                                                                                        // 可选token，用于高安全级别操作
 }
 
 // LoginWithSMSRequest 手机号+验证码登录请求（扩展设备信息）.
 type LoginWithSMSRequest struct {
-	Phone      string                     `json:"phone"       validate:"required,min=11,max=20"`
-	Code       string                     `json:"code"        validate:"required,min=4,max=10"`
-	Token      string                     `json:"token,omitempty"`                 // 验证token
-	DeviceInfo *DeviceRegistrationRequest `json:"device_info" validate:"required"` // 设备注册信息（客户端只传设备指纹）
+	Phone      string                     `json:"phone"           validate:"required,min=11,max=20"`
+	Code       string                     `json:"code"            validate:"required,min=4,max=10"`
+	Token      string                     `json:"token,omitempty"`                     // 验证token
+	DeviceInfo *DeviceRegistrationRequest `json:"device_info"     validate:"required"` // 设备注册信息（客户端只传设备指纹）
 }
 
 // ValidateSMSRequest 验证码验证请求
 type ValidateSMSRequest struct {
-	Phone   string `json:"phone"   validate:"required,min=11,max=20"`
-	Code    string `json:"code"    validate:"required,min=4,max=10"`
-	Purpose string `json:"purpose" validate:"required"`
+	Phone   string `json:"phone"           validate:"required,min=11,max=20"`
+	Code    string `json:"code"            validate:"required,min=4,max=10"`
+	Purpose string `json:"purpose"         validate:"required"`
 	Token   string `json:"token,omitempty"` // 验证token
 }
 

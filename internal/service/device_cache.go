@@ -1,13 +1,12 @@
 package service
 
 import (
-	"fmt"
-	"sync"
-	"time"
-
 	"ai-svc/internal/config"
 	"ai-svc/internal/model"
 	"ai-svc/pkg/logger"
+	"fmt"
+	"sync"
+	"time"
 )
 
 // deviceCacheService 内存设备缓存服务实现（占位符，后续可替换为Redis）

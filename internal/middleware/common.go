@@ -1,10 +1,9 @@
 package middleware
 
 import (
+	"ai-svc/pkg/logger"
 	"net/http"
 	"time"
-
-	"ai-svc/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"

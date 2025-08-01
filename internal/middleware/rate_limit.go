@@ -1,11 +1,10 @@
 package middleware
 
 import (
-	"sync"
-	"time"
-
 	"ai-svc/internal/config"
 	"ai-svc/pkg/response"
+	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )

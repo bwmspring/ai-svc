@@ -1,13 +1,12 @@
 package routes
 
 import (
-	"time"
-
 	"ai-svc/internal/controller"
 	"ai-svc/internal/middleware"
 	"ai-svc/internal/repository"
 	"ai-svc/internal/service"
 	"ai-svc/pkg/response"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -36,11 +35,18 @@ func SetupRoutes() *gin.Engine {
 	userRepo := repository.NewUserRepository()
 	smsRepo := repository.NewSMSRepository()
 	deviceRepo := repository.NewDeviceRepository()
+	behaviorLogRepo := repository.NewUserBehaviorLogRepository() // 新增用户行为日志仓储
+	messageRepo := repository.NewMessageRepository()             // 新增消息仓储
+
 	smsService := service.NewSMSService(smsRepo)
 	deviceService := service.NewDeviceService(deviceRepo)
-	userService := service.NewUserService(userRepo, smsService, deviceService)
+	locationService := service.NewDefaultLocationService()                                      // 新增地理位置服务
+	loginLogService := service.NewLoginLogService(behaviorLogRepo, userRepo, locationService)   // 新增登录日志服务
+	userService := service.NewUserService(userRepo, smsService, deviceService, loginLogService) // 修改用户服务，添加登录日志服务
+	messageService := service.NewMessageService(messageRepo, userRepo)                          // 新增消息服务
 	userController := controller.NewUserController(userService, smsService)
 	smsController := controller.NewSMSController(smsService)
+	messageController := controller.NewMessageController(messageService) // 新增消息控制器
 
 	// 创建频率限制器
 	rateLimiter := middleware.NewRateLimiter()
@@ -103,6 +109,67 @@ func SetupRoutes() *gin.Engine {
 				"/devices/kick",
 				middleware.ConfigRateLimit(rateLimiter, "login"), // 使用登录限流作为严格限流
 				userController.KickDevices,
+			)
+		}
+
+		// 消息管理接口
+		messages := api.Group("/messages")
+		messages.Use(middleware.JWTWithDeviceAuth())
+		{
+			// 发送消息
+			messages.POST(
+				"/send",
+				middleware.APIRateLimit(rateLimiter),
+				messageController.SendMessage,
+			)
+
+			// 发送广播消息
+			messages.POST(
+				"/broadcast",
+				middleware.APIRateLimit(rateLimiter),
+				messageController.SendBroadcastMessage,
+			)
+
+			// 获取消息列表
+			messages.GET(
+				"/inbox",
+				middleware.APIRateLimit(rateLimiter),
+				messageController.GetMessages,
+			)
+
+			// 获取未读消息数量
+			messages.GET(
+				"/unread-count",
+				middleware.APIRateLimit(rateLimiter),
+				messageController.GetUnreadCount,
+			)
+
+			// 标记消息为已读
+			messages.PUT(
+				"/:id/read",
+				middleware.APIRateLimit(rateLimiter),
+				messageController.MarkAsRead,
+			)
+
+			// 批量标记已读
+			messages.PUT(
+				"/batch-read",
+				middleware.APIRateLimit(rateLimiter),
+				messageController.BatchMarkAsRead,
+			)
+
+			// 删除消息
+			messages.DELETE(
+				"/:id",
+				middleware.APIRateLimit(rateLimiter),
+				messageController.DeleteMessage,
+			)
+
+			// 获取消息详情
+			messages.GET(
+				"/:id",
+				middleware.APIRateLimit(rateLimiter),
+				messageController.GetMessageDetail,
 			)
 		}
 
